@@ -1,7 +1,7 @@
 const typescript = require('@rollup/plugin-typescript');
 const { nodeResolve } = require('@rollup/plugin-node-resolve');
 const commonjs = require('@rollup/plugin-commonjs');
-const { terser } = require('@rollup/plugin-terser');
+const terser = require('@rollup/plugin-terser').default || require('@rollup/plugin-terser');
 
 const isProduction = process.env.NODE_ENV === 'production';
 
