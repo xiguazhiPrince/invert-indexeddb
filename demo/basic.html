@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>基础功能测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #667eea;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 6px;
+        }
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 4px;
+            border-left: 4px solid #667eea;
+        }
+        .result pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        .error {
+            border-left-color: #e74c3c;
+            background: #fee;
+        }
+        .success {
+            border-left-color: #27ae60;
+            background: #efe;
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-bottom: 15px;
+        }
+        .status.init {
+            background: #3498db;
+            color: white;
+        }
+        .status.ready {
+            background: #27ae60;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← 返回首页</a>
+        <h1>基础功能测试</h1>
+        
+        <div class="section">
+            <h2>初始化</h2>
+            <div id="initStatus" class="status init">未初始化</div>
+            <button onclick="initDB()">初始化数据库</button>
+        </div>
+
+        <div class="section">
+            <h2>添加文档</h2>
+            <div class="form-group">
+                <label>标题:</label>
+                <input type="text" id="docTitle" placeholder="输入文档标题" value="示例文档">
+            </div>
+            <div class="form-group">
+                <label>内容:</label>
+                <textarea id="docContent" placeholder="输入文档内容">这是一段示例内容，用于测试全文搜索功能。</textarea>
+            </div>
+            <div class="form-group">
+                <label>索引字段 (用逗号分隔):</label>
+                <input type="text" id="indexFields" placeholder="例如: title,content" value="title,content">
+            </div>
+            <button onclick="addDocument()">添加文档</button>
+            <div id="addResult"></div>
+        </div>
+
+        <div class="section">
+            <h2>获取文档</h2>
+            <div class="form-group">
+                <label>文档ID:</label>
+                <input type="text" id="getDocId" placeholder="输入文档ID">
+            </div>
+            <button onclick="getDocument()">获取文档</button>
+            <div id="getResult"></div>
+        </div>
+
+        <div class="section">
+            <h2>更新文档</h2>
+            <div class="form-group">
+                <label>文档ID:</label>
+                <input type="text" id="updateDocId" placeholder="输入文档ID">
+            </div>
+            <div class="form-group">
+                <label>新标题:</label>
+                <input type="text" id="updateTitle" placeholder="输入新标题">
+            </div>
+            <div class="form-group">
+                <label>新内容:</label>
+                <textarea id="updateContent" placeholder="输入新内容"></textarea>
+            </div>
+            <button onclick="updateDocument()">更新文档</button>
+            <div id="updateResult"></div>
+        </div>
+
+        <div class="section">
+            <h2>搜索文档</h2>
+            <div class="form-group">
+                <label>搜索关键词:</label>
+                <input type="text" id="searchQuery" placeholder="输入搜索关键词" value="示例">
+            </div>
+            <button onclick="searchDocuments()">搜索</button>
+            <div id="searchResult"></div>
+        </div>
+
+        <div class="section">
+            <h2>删除文档</h2>
+            <div class="form-group">
+                <label>文档ID:</label>
+                <input type="text" id="deleteDocId" placeholder="输入文档ID">
+            </div>
+            <button onclick="deleteDocument()">删除文档</button>
+            <div id="deleteResult"></div>
+        </div>
+    </div>
+
+    <script src="dist/invert-indexeddb.iife.js"></script>
+    <script>
+        let searchDB = null;
+
+        async function initDB() {
+            try {
+                searchDB = new InvertedIndexDB.InvertedIndexDB('testDB');
+                await searchDB.init();
+                document.getElementById('initStatus').textContent = '已初始化';
+                document.getElementById('initStatus').className = 'status ready';
+                showResult('initResult', '数据库初始化成功！', 'success');
+            } catch (error) {
+                showResult('initResult', '初始化失败: ' + error.message, 'error');
+            }
+        }
+
+        async function addDocument() {
+            if (!checkInit()) return;
+            try {
+                const title = document.getElementById('docTitle').value;
+                const content = document.getElementById('docContent').value;
+                const indexFields = document.getElementById('indexFields').value
+                    .split(',')
+                    .map(f => f.trim())
+                    .filter(f => f);
+
+                const doc = { title, content };
+                const docId = await searchDB.addDocument(doc, indexFields);
+                showResult('addResult', `文档添加成功！文档ID: ${docId}`, 'success');
+                document.getElementById('getDocId').value = docId;
+            } catch (error) {
+                showResult('addResult', '添加失败: ' + error.message, 'error');
+            }
+        }
+
+        async function getDocument() {
+            if (!checkInit()) return;
+            try {
+                const docId = document.getElementById('getDocId').value;
+                if (!docId) {
+                    showResult('getResult', '请输入文档ID', 'error');
+                    return;
+                }
+                const doc = await searchDB.getDocument(docId);
+                if (doc) {
+                    showResult('getResult', '文档获取成功！', 'success', doc);
+                } else {
+                    showResult('getResult', '文档不存在', 'error');
+                }
+            } catch (error) {
+                showResult('getResult', '获取失败: ' + error.message, 'error');
+            }
+        }
+
+        async function updateDocument() {
+            if (!checkInit()) return;
+            try {
+                const docId = document.getElementById('updateDocId').value;
+                const title = document.getElementById('updateTitle').value;
+                const content = document.getElementById('updateContent').value;
+
+                if (!docId) {
+                    showResult('updateResult', '请输入文档ID', 'error');
+                    return;
+                }
+
+                const doc = {};
+                if (title) doc.title = title;
+                if (content) doc.content = content;
+
+                await searchDB.updateDocument(docId, doc, ['title', 'content']);
+                showResult('updateResult', '文档更新成功！', 'success');
+            } catch (error) {
+                showResult('updateResult', '更新失败: ' + error.message, 'error');
+            }
+        }
+
+        async function searchDocuments() {
+            if (!checkInit()) return;
+            try {
+                const query = document.getElementById('searchQuery').value;
+                if (!query) {
+                    showResult('searchResult', '请输入搜索关键词', 'error');
+                    return;
+                }
+                const results = await searchDB.search(query);
+                showResult('searchResult', 
+                    `找到 ${results.total} 个结果`, 
+                    'success', 
+                    results
+                );
+            } catch (error) {
+                showResult('searchResult', '搜索失败: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteDocument() {
+            if (!checkInit()) return;
+            try {
+                const docId = document.getElementById('deleteDocId').value;
+                if (!docId) {
+                    showResult('deleteResult', '请输入文档ID', 'error');
+                    return;
+                }
+                await searchDB.deleteDocument(docId);
+                showResult('deleteResult', '文档删除成功！', 'success');
+            } catch (error) {
+                showResult('deleteResult', '删除失败: ' + error.message, 'error');
+            }
+        }
+
+        function checkInit() {
+            if (!searchDB) {
+                alert('请先初始化数据库');
+                return false;
+            }
+            return true;
+        }
+
+        function showResult(elementId, message, type, data = null) {
+            const element = document.getElementById(elementId);
+            const className = type === 'error' ? 'result error' : 'result success';
+            let html = `<div class="${className}">${message}</div>`;
+            if (data) {
+                html += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+            element.innerHTML = html;
+        }
+
+        // 页面加载时自动初始化
+        window.addEventListener('load', () => {
+            initDB();
+        });
+    </script>
+</body>
+</html>
+
+
