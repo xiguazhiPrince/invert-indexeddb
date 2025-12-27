@@ -12,10 +12,7 @@ export function generateId(): string {
 /**
  * 深度合并对象
  */
-export function deepMerge<T extends Record<string, any>>(
-  target: T,
-  source: Partial<T>
-): T {
+export function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>): T {
   const result = { ...target };
 
   for (const key in source) {
@@ -70,4 +67,3 @@ export function debounce<T extends (...args: any[]) => any>(
     }, wait);
   };
 }
-

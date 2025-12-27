@@ -30,11 +30,14 @@ const search = new InvertedIndexDB('mySearchDB');
 await search.init();
 
 // 添加文档
-const docId = await search.addDocument({
-  title: '示例文档',
-  content: '这是一段示例内容',
-  createdAt: Date.now()
-}, ['title', 'createdAt']); // 指定需要索引的字段
+const docId = await search.addDocument(
+  {
+    title: '示例文档',
+    content: '这是一段示例内容',
+    createdAt: Date.now(),
+  },
+  ['title', 'createdAt']
+); // 指定需要索引的字段
 
 // 搜索
 const results = await search.search('示例');
@@ -49,7 +52,7 @@ const lightResults = await search.searchIds('示例', {
   fields: ['title', 'createdAt', 'score'],
   sortBy: { field: 'createdAt', order: 'desc' },
   limit: 20,
-  offset: 0
+  offset: 0,
 });
 
 // 结果只包含ID和指定字段
@@ -60,9 +63,7 @@ console.log(lightResults.items);
 // ]
 
 // 然后可以根据需要获取完整文档
-const fullDocs = await Promise.all(
-  lightResults.docIds.map(id => search.getDocument(id))
-);
+const fullDocs = await Promise.all(lightResults.docIds.map((id) => search.getDocument(id)));
 ```
 
 ### 使用自定义分词器
@@ -81,7 +82,7 @@ class MyTokenizer implements ITokenizer {
 
 // 使用自定义分词器
 const search = new InvertedIndexDB('myDB', {
-  tokenizer: new MyTokenizer()
+  tokenizer: new MyTokenizer(),
 });
 await search.init();
 ```
@@ -117,11 +118,14 @@ await search.init();
 添加文档并建立索引。
 
 ```typescript
-const docId = await search.addDocument({
-  title: '标题',
-  content: '内容',
-  createdAt: Date.now()
-}, ['title', 'createdAt']); // 指定需要索引的字段
+const docId = await search.addDocument(
+  {
+    title: '标题',
+    content: '内容',
+    createdAt: Date.now(),
+  },
+  ['title', 'createdAt']
+); // 指定需要索引的字段
 ```
 
 ##### updateDocument(docId, doc, indexFields?)
@@ -129,10 +133,14 @@ const docId = await search.addDocument({
 更新文档并重建索引。
 
 ```typescript
-await search.updateDocument(docId, {
-  title: '新标题',
-  content: '新内容'
-}, ['title']);
+await search.updateDocument(
+  docId,
+  {
+    title: '新标题',
+    content: '新内容',
+  },
+  ['title']
+);
 ```
 
 ##### deleteDocument(docId)
@@ -157,12 +165,12 @@ const doc = await search.getDocument(docId);
 
 ```typescript
 const results = await search.search('关键词', {
-  fuzzy: false,        // 是否模糊匹配
-  exact: false,        // 是否精确匹配（短语搜索）
-  operator: 'AND',     // 'AND' 或 'OR'
-  limit: 10,           // 限制返回数量
-  offset: 0,           // 分页偏移量
-  highlight: true      // 是否高亮关键词
+  fuzzy: false, // 是否模糊匹配
+  exact: false, // 是否精确匹配（短语搜索）
+  operator: 'AND', // 'AND' 或 'OR'
+  limit: 10, // 限制返回数量
+  offset: 0, // 分页偏移量
+  highlight: true, // 是否高亮关键词
 });
 ```
 
@@ -172,10 +180,10 @@ const results = await search.search('关键词', {
 
 ```typescript
 const results = await search.searchIds('关键词', {
-  fields: ['title', 'createdAt'],  // 指定返回字段
-  sortBy: { field: 'createdAt', order: 'desc' },  // 排序
+  fields: ['title', 'createdAt'], // 指定返回字段
+  sortBy: { field: 'createdAt', order: 'desc' }, // 排序
   limit: 20,
-  offset: 0
+  offset: 0,
 });
 ```
 
@@ -194,7 +202,7 @@ await search.clear();
 ```typescript
 const stats = await search.getStats();
 console.log(stats.documentCount); // 文档数
-console.log(stats.termCount);      // 索引词数
+console.log(stats.termCount); // 索引词数
 ```
 
 ##### rebuildIndex()
@@ -229,6 +237,7 @@ await search.rebuildIndex();
 ## 浏览器支持
 
 支持所有现代浏览器（支持 IndexedDB）：
+
 - Chrome/Edge 24+
 - Firefox 16+
 - Safari 10+
@@ -237,4 +246,3 @@ await search.rebuildIndex();
 ## 许可证
 
 MIT
-

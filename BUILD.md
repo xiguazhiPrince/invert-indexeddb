@@ -13,11 +13,13 @@ pnpm build
 ```
 
 **输出：**
+
 - `dist/` 目录下的多个文件
 - 保留原始文件结构
 - 包含 `.js`、`.d.ts` 和 `.map` 文件
 
 **适用场景：**
+
 - 发布到 npm
 - 在 Node.js 或现代打包工具中使用
 - 需要 Tree-shaking 优化
@@ -31,11 +33,13 @@ pnpm build:bundle
 ```
 
 **输出：**
+
 - `dist/invert-indexeddb.umd.js` - UMD 格式（通用模块定义）
 - `dist/invert-indexeddb.esm.js` - ESM 格式（ES 模块）
 - `dist/invert-indexeddb.iife.js` - IIFE 格式（立即执行函数）
 
 **适用场景：**
+
 - 直接在浏览器中使用（通过 `<script>` 标签）
 - 需要单文件打包
 - CDN 分发
@@ -49,6 +53,7 @@ pnpm build:all
 ```
 
 **输出：**
+
 - TypeScript 编译的文件
 - Rollup 打包的单文件
 
@@ -61,6 +66,7 @@ pnpm build:prod
 ```
 
 **输出：**
+
 - 所有文件（TypeScript + Rollup）
 - 代码经过压缩和优化
 
@@ -108,11 +114,13 @@ import { InvertedIndexDB } from 'invert-indexeddb';
 ## 文件说明
 
 ### TypeScript 编译输出
+
 - `dist/index.js` - 主入口文件（CommonJS/ESM）
 - `dist/**/*.d.ts` - TypeScript 类型定义文件
 - `dist/**/*.map` - Source map 文件
 
 ### Rollup 打包输出
+
 - `dist/invert-indexeddb.umd.js` - UMD 格式，支持 AMD、CommonJS 和全局变量
 - `dist/invert-indexeddb.esm.js` - ES 模块格式
 - `dist/invert-indexeddb.iife.js` - 立即执行函数，适合 `<script>` 标签
@@ -127,6 +135,7 @@ npm publish
 ```
 
 发布的内容包括：
+
 - `dist/` 目录（所有编译和打包文件）
 - `README.md`
 - `package.json` 中 `files` 字段指定的文件
@@ -137,4 +146,3 @@ npm publish
 2. **Rollup 打包**：单文件，适合浏览器直接使用
 3. **生产环境**：使用 `build:prod` 会压缩代码，减小文件大小
 4. **Source Map**：所有打包都包含 source map，方便调试
-

@@ -119,10 +119,7 @@ export function findCandidatesByNGram(
     const candidates = termNGramMap.get(gram);
     if (candidates) {
       for (const candidate of candidates) {
-        candidateCounts.set(
-          candidate,
-          (candidateCounts.get(candidate) || 0) + 1
-        );
+        candidateCounts.set(candidate, (candidateCounts.get(candidate) || 0) + 1);
       }
     }
   }

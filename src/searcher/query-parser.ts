@@ -13,7 +13,10 @@ export class QueryParser {
   /**
    * 解析查询字符串
    */
-  parse(query: string, options?: { exact?: boolean }): {
+  parse(
+    query: string,
+    options?: { exact?: boolean }
+  ): {
     terms: string[];
     tokens: Token[];
     isPhrase: boolean;
@@ -75,4 +78,3 @@ export class QueryParser {
     };
   }
 }
-

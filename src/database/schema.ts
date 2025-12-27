@@ -22,4 +22,3 @@ export const INDEX_NAMES = {
  * 数据库版本
  */
 export const DB_VERSION = 1;
-

@@ -7,11 +7,7 @@ export class Highlighter {
   /**
    * 高亮文本中的匹配部分
    */
-  static highlight(
-    text: string,
-    matches: MatchInfo[],
-    tag: string = 'mark'
-  ): string {
+  static highlight(text: string, matches: MatchInfo[], tag: string = 'mark'): string {
     if (!matches || matches.length === 0) {
       return text;
     }
@@ -24,10 +20,7 @@ export class Highlighter {
     for (let i = sortedMatches.length - 1; i >= 0; i--) {
       const match = sortedMatches[i];
       const before = result.substring(0, match.position);
-      const matched = result.substring(
-        match.position,
-        match.position + match.length
-      );
+      const matched = result.substring(match.position, match.position + match.length);
       const after = result.substring(match.position + match.length);
 
       result = `${before}<${tag}>${matched}</${tag}>${after}`;
@@ -70,11 +63,7 @@ export class Highlighter {
   /**
    * 提取包含匹配的文本片段
    */
-  static extractSnippets(
-    text: string,
-    matches: MatchInfo[],
-    contextLength: number = 50
-  ): string[] {
+  static extractSnippets(text: string, matches: MatchInfo[], contextLength: number = 50): string[] {
     if (!matches || matches.length === 0) {
       return [];
     }
@@ -84,10 +73,7 @@ export class Highlighter {
 
     for (const match of sortedMatches) {
       const start = Math.max(0, match.position - contextLength);
-      const end = Math.min(
-        text.length,
-        match.position + match.length + contextLength
-      );
+      const end = Math.min(text.length, match.position + match.length + contextLength);
 
       let snippet = text.substring(start, end);
 
@@ -107,4 +93,3 @@ export class Highlighter {
     return snippets;
   }
 }
-

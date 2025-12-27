@@ -37,4 +37,3 @@ export class DefaultTokenizer implements ITokenizer {
     return tokens;
   }
 }
-
