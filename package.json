@@ -24,7 +24,7 @@
     "search",
     "tokenizer"
   ],
-  "author": "",
+  "author": "xigua",
   "license": "MIT",
   "devDependencies": {
     "@rollup/plugin-commonjs": "^28.0.0",
@@ -48,6 +48,6 @@
   ],
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://github.com/xiguazhiPrince/invert-indexeddb.git"
   }
 }
