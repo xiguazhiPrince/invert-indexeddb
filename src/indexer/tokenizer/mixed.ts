@@ -1,16 +1,23 @@
 import { ITokenizer, Token } from '../../types';
+import { generateNGrams } from '../ngram';
 
 /**
  * 中英文混合分词器
  * 特性：
  * 1. 英文单词分词（支持连字符、撇号等，如 "state-of-the-art"）
- * 2. 中文字符分词（逐字分词，每个中文字符作为独立的token）
+ * 2. 中文N-gram分词（2-gram + 单字，提高搜索准确性和召回率）
  * 3. 数字处理（支持整数和小数）
  * 4. 中英文混合文本处理
  *
+ * 中文分词策略：
+ * - 使用2-gram（二元组）捕获词语边界，如 "你好世界" -> ["你好", "好世", "世界"]
+ * - 同时保留单字tokens以提高召回率，如 "你好世界" -> ["你", "好", "世", "界"]
+ * - 这样既能匹配完整词语，也能匹配单个字符
+ *
  * 示例：
- * "Hello世界123" -> ["hello", "世", "界", "123"]
- * "state-of-the-art技术" -> ["state-of-the-art", "技", "术"]
+ * "Hello世界123" -> ["hello", "世", "界", "世界", "123"]
+ * "state-of-the-art技术" -> ["state-of-the-art", "技", "术", "技术"]
+ * "你好世界" -> ["你", "好", "世", "界", "你好", "好世", "世界"]
  */
 export class MixedTokenizer implements ITokenizer {
   // 匹配中文字符（包括扩展区域）
@@ -84,19 +91,51 @@ export class MixedTokenizer implements ITokenizer {
 
   /**
    * 处理中文字符
+   * 使用N-gram策略：生成2-gram和单字tokens
+   * 这样既能捕获词语边界，又能保证单字搜索的召回率
+   * @returns tokens数组和实际处理的字符长度
    */
-  private processChineseChars(text: string, startPos: number): Token[] {
+  private processChineseChars(text: string, startPos: number): { tokens: Token[]; charLength: number } {
     const tokens: Token[] = [];
     let i = startPos;
+    const chineseStart = i;
+    
+    // 先收集所有连续的中文字符
     while (i < text.length && this.isChinese(text[i])) {
-      tokens.push({
-        term: text[i],
-        position: i,
-        length: 1,
-      });
       i++;
     }
-    return tokens;
+    
+    const chineseText = text.slice(chineseStart, i);
+    const chineseLength = chineseText.length;
+    
+    if (chineseLength === 0) {
+      return { tokens: [], charLength: 0 };
+    }
+    
+    // 1. 生成单字tokens（保证单字搜索的召回率）
+    for (let j = 0; j < chineseLength; j++) {
+      tokens.push({
+        term: chineseText[j],
+        position: chineseStart + j,
+        length: 1,
+      });
+    }
+    
+    // 2. 生成2-gram tokens（捕获词语边界，提高搜索准确性）
+    // 例如 "你好世界" -> ["你好", "好世", "世界"]
+    // 注意：只有当长度 >= 2 时才生成 2-gram
+    if (chineseLength >= 2) {
+      const bigrams = generateNGrams(chineseText, 2);
+      for (let j = 0; j < bigrams.length; j++) {
+        tokens.push({
+          term: bigrams[j],
+          position: chineseStart + j,
+          length: 2,
+        });
+      }
+    }
+    
+    return { tokens, charLength: chineseLength };
   }
 
   /**
@@ -150,10 +189,10 @@ export class MixedTokenizer implements ITokenizer {
 
     // 处理中文字符
     if (this.isChinese(char)) {
-      const chineseTokens = this.processChineseChars(text, pos);
+      const { tokens: chineseTokens, charLength } = this.processChineseChars(text, pos);
       return {
         tokens: chineseTokens,
-        nextPos: pos + chineseTokens.length,
+        nextPos: pos + charLength,
       };
     }
 
