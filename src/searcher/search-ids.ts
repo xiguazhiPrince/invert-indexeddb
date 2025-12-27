@@ -1,16 +1,16 @@
-import { Searcher } from './search';
-import { Sorter } from './sorter';
-import { IndexedDBWrapper } from '../database/db';
-import { STORE_NAMES } from '../database/schema';
-import { SearchIdsOptions, SearchIdsResult } from '../types';
+import { Searcher } from "./search";
+import { Sorter } from "./sorter";
+import { IndexedDBWrapper } from "../database/db";
+import { STORE_NAMES } from "../database/schema";
+import { SearchIdsOptions, SearchIdsResult } from "../types";
 
 /**
  * 轻量级搜索器（返回ID和指定字段）
  */
 export class SearchIds {
-  private searcher: Searcher;
-  private sorter: Sorter;
-  private db: IndexedDBWrapper;
+  private readonly searcher: Searcher;
+  private readonly sorter: Sorter;
+  private readonly db: IndexedDBWrapper;
 
   constructor(searcher: Searcher, sorter: Sorter, db: IndexedDBWrapper) {
     this.searcher = searcher;
@@ -129,7 +129,7 @@ export class SearchIds {
       };
 
       request.onerror = () => {
-        const error = request.error || new Error('Unknown error');
+        const error = request.error || new Error("Unknown error");
         reject(new Error(`Failed to get doc fields: ${String(error)}`));
       };
     });
@@ -148,7 +148,7 @@ export class SearchIds {
       };
 
       request.onerror = () => {
-        const error = request.error || new Error('Unknown error');
+        const error = request.error || new Error("Unknown error");
         reject(new Error(`Failed to get document: ${String(error)}`));
       };
     });
@@ -165,11 +165,11 @@ export class SearchIds {
 
     for (const fieldName of fieldNames) {
       // 支持嵌套字段（如 'user.name'）
-      const parts = fieldName.split('.');
+      const parts = fieldName.split(".");
       let value: any = doc;
 
       for (const part of parts) {
-        if (value && typeof value === 'object' && part in value) {
+        if (value && typeof value === "object" && part in value) {
           value = value[part];
         } else {
           value = undefined;
@@ -185,4 +185,3 @@ export class SearchIds {
     return result;
   }
 }
-

@@ -53,9 +53,9 @@ export function levenshteinDistance(str1: string, str2: string): number {
         matrix[i][j] = matrix[i - 1][j - 1];
       } else {
         matrix[i][j] = Math.min(
-          matrix[i - 1][j] + 1,     // 删除
-          matrix[i][j - 1] + 1,     // 插入
-          matrix[i - 1][j - 1] + 1  // 替换
+          matrix[i - 1][j] + 1, // 删除
+          matrix[i][j - 1] + 1, // 插入
+          matrix[i - 1][j - 1] + 1 // 替换
         );
       }
     }
@@ -100,11 +100,16 @@ export function findSimilarTerms(
 
 /**
  * 使用 N-gram 查找候选词
+ *
+ * 改进：使用自适应阈值，减少漏报
+ * - 短词（<=4字符）：minMatches=1，避免漏掉相似词
+ * - 中等词（5-7字符）：minMatches=2
+ * - 长词（>7字符）：minMatches=3
  */
 export function findCandidatesByNGram(
   targetTerm: string,
   termNGramMap: Map<string, Set<string>>,
-  minMatches: number = 2
+  minMatches?: number
 ): Set<string> {
   const targetGrams = generateNGramsCombined(targetTerm);
   const candidateCounts = new Map<string, number>();
@@ -122,14 +127,28 @@ export function findCandidatesByNGram(
     }
   }
 
+  // 自适应阈值：根据词长度调整，减少漏报
+  let adaptiveMinMatches: number;
+  if (minMatches === undefined) {
+    // 根据目标词长度自适应调整
+    if (targetTerm.length <= 4) {
+      adaptiveMinMatches = 1; // 短词：只要有一个 n-gram 匹配就保留
+    } else if (targetTerm.length <= 7) {
+      adaptiveMinMatches = 2; // 中等词：至少 2 个匹配
+    } else {
+      adaptiveMinMatches = 3; // 长词：至少 3 个匹配
+    }
+  } else {
+    adaptiveMinMatches = minMatches;
+  }
+
   // 筛选出匹配次数足够的候选词
   const result = new Set<string>();
   for (const [term, count] of candidateCounts.entries()) {
-    if (count >= minMatches) {
+    if (count >= adaptiveMinMatches) {
       result.add(term);
     }
   }
 
   return result;
 }
-
