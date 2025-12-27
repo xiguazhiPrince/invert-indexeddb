@@ -83,8 +83,56 @@ export class Searcher {
    */
   private async searchPhrase(phrase: string): Promise<Set<string>> {
     // 短语搜索：查找包含完整短语的文档
-    // 这里简化处理，实际应该检查词的位置关系
-    return await this.invertedIndex.findDocumentsByTerm(phrase);
+    // 1. 先将短语分词，找到包含所有词的文档（AND操作）
+    // 2. 然后检查这些文档的原始内容中是否包含完整的短语
+
+    const phraseLower = phrase.toLowerCase().trim();
+    if (!phraseLower) {
+      return new Set<string>();
+    }
+
+    // 将短语分词，找到包含所有词的候选文档
+    const tokens = this.tokenizer.tokenize(phrase);
+    const terms = tokens.map((t) => t.term);
+
+    if (terms.length === 0) {
+      return new Set<string>();
+    }
+
+    // 找到包含所有词的文档（AND操作）
+    const candidateDocIds = await this.invertedIndex.findDocumentsByTermsAnd(terms);
+
+    if (candidateDocIds.size === 0) {
+      return new Set<string>();
+    }
+
+    // 检查这些文档的原始内容中是否包含完整的短语
+    const matchingDocIds = new Set<string>();
+
+    for (const docId of candidateDocIds) {
+      const doc = await this.getDocument(docId);
+      if (!doc) {
+        continue;
+      }
+
+      // 检查文档的所有字符串字段中是否包含完整短语
+      let found = false;
+      for (const [field, value] of Object.entries(doc)) {
+        if (typeof value === 'string' && value) {
+          const textLower = value.toLowerCase();
+          if (textLower.includes(phraseLower)) {
+            found = true;
+            break;
+          }
+        }
+      }
+
+      if (found) {
+        matchingDocIds.add(docId);
+      }
+    }
+
+    return matchingDocIds;
   }
 
   /**
