@@ -236,6 +236,10 @@ The default tokenizer is based on spaces and punctuation marks, supporting mixed
 - Lightweight queries return only necessary fields
 - Asynchronous processing without blocking the main thread
 
+### Performance Benchmarks
+
+- **Rebuild index for 10,000 documents**: 655,956.70 ms (approximately 656 seconds / 11 minutes)
+
 ## Browser Support
 
 Supports all modern browsers (with IndexedDB support):
