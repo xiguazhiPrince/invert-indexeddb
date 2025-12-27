@@ -1,24 +1,26 @@
 import { SortField } from '../types';
 import { IndexedDBWrapper } from '../database/db';
-import { STORE_NAMES } from '../database/schema';
+import { DocumentsStore } from '../database/stores/documents-store';
+import { DocFieldsStore } from '../database/stores/doc-fields-store';
 
 /**
  * 排序器
  */
 export class Sorter {
   private readonly db: IndexedDBWrapper;
+  private readonly documentsStore: DocumentsStore;
+  private readonly docFieldsStore: DocFieldsStore;
 
   constructor(db: IndexedDBWrapper) {
     this.db = db;
+    this.documentsStore = new DocumentsStore(db);
+    this.docFieldsStore = new DocFieldsStore(db);
   }
 
   /**
    * 对文档ID数组进行排序
    */
-  async sort(
-    docIds: string[],
-    sortBy: SortField | SortField[]
-  ): Promise<string[]> {
+  async sort(docIds: string[], sortBy: SortField | SortField[]): Promise<string[]> {
     if (!sortBy || docIds.length === 0) {
       return docIds;
     }
@@ -48,9 +50,7 @@ export class Sorter {
   /**
    * 获取文档字段值
    */
-  private async getDocFields(
-    docIds: string[]
-  ): Promise<Map<string, Record<string, any>>> {
+  private async getDocFields(docIds: string[]): Promise<Map<string, Record<string, any>>> {
     const result = new Map<string, Record<string, any>>();
 
     // 先从 docFields store 获取
@@ -78,34 +78,14 @@ export class Sorter {
   /**
    * 从 docFields store 获取字段
    */
-  private async getDocFieldsFromStore(
-    docId: string
-  ): Promise<Record<string, any> | null> {
-    return new Promise((resolve, reject) => {
-      const store = this.db.getStore(STORE_NAMES.DOC_FIELDS);
-      const request = store.get(docId);
-
-      request.onsuccess = () => {
-        if (request.result) {
-          resolve(request.result.fields || null);
-        } else {
-          resolve(null);
-        }
-      };
-
-      request.onerror = () => {
-        const error = request.error || new Error('Unknown error');
-        reject(error);
-      };
-    });
+  private async getDocFieldsFromStore(docId: string): Promise<Record<string, any> | null> {
+    return await this.docFieldsStore.get(docId);
   }
 
   /**
    * 获取完整文档
    */
-  private async getFullDocuments(
-    docIds: string[]
-  ): Promise<Map<string, Record<string, any>>> {
+  private async getFullDocuments(docIds: string[]): Promise<Map<string, Record<string, any>>> {
     const result = new Map<string, Record<string, any>>();
 
     const promises = docIds.map(async (docId) => {
@@ -123,19 +103,7 @@ export class Sorter {
    * 获取单个文档
    */
   private async getDocument(docId: string): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const store = this.db.getStore(STORE_NAMES.DOCUMENTS);
-      const request = store.get(docId);
-
-      request.onsuccess = () => {
-        resolve(request.result || null);
-      };
-
-      request.onerror = () => {
-        const error = request.error || new Error('Unknown error');
-        reject(error);
-      };
-    });
+    return await this.documentsStore.get(docId);
   }
 
   /**
@@ -191,4 +159,3 @@ export class Sorter {
     return aStr.localeCompare(bStr);
   }
 }
-

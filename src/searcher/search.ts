@@ -1,15 +1,9 @@
-import { InvertedIndex } from "../indexer/inverted-index";
-import { QueryParser } from "./query-parser";
-import { IndexedDBWrapper } from "../database/db";
-import { STORE_NAMES } from "../database/schema";
-import {
-  SearchOptions,
-  SearchResult,
-  SearchResultItem,
-  MatchInfo,
-  ITokenizer,
-} from "../types";
-import { findSimilarTerms } from "../indexer/ngram";
+import { InvertedIndex } from '../indexer/inverted-index';
+import { QueryParser } from './query-parser';
+import { IndexedDBWrapper } from '../database/db';
+import { DocumentsStore } from '../database/stores/documents-store';
+import { SearchOptions, SearchResult, SearchResultItem, MatchInfo, ITokenizer } from '../types';
+import { findSimilarTerms } from '../indexer/ngram';
 
 /**
  * 搜索器
@@ -19,36 +13,25 @@ export class Searcher {
   private readonly queryParser: QueryParser;
   private readonly db: IndexedDBWrapper;
   private readonly tokenizer: ITokenizer;
+  private readonly documentsStore: DocumentsStore;
 
-  constructor(
-    db: IndexedDBWrapper,
-    invertedIndex: InvertedIndex,
-    tokenizer: ITokenizer
-  ) {
+  constructor(db: IndexedDBWrapper, invertedIndex: InvertedIndex, tokenizer: ITokenizer) {
     this.db = db;
     this.invertedIndex = invertedIndex;
     this.tokenizer = tokenizer;
     this.queryParser = new QueryParser(tokenizer);
+    this.documentsStore = new DocumentsStore(db);
   }
 
   /**
    * 执行搜索
    */
-  async search<T = any>(
-    query: string,
-    options: SearchOptions = {}
-  ): Promise<SearchResult<T>> {
-    if (!query || typeof query !== "string") {
+  async search<T = any>(query: string, options: SearchOptions = {}): Promise<SearchResult<T>> {
+    if (!query || typeof query !== 'string') {
       return { docIds: [], items: [], total: 0 };
     }
 
-    const {
-      fuzzy = false,
-      exact = false,
-      operator = "AND",
-      limit,
-      offset = 0,
-    } = options;
+    const { fuzzy = false, exact = false, operator = 'AND', limit, offset = 0 } = options;
 
     // 解析查询
     const { terms, isPhrase } = this.queryParser.parse(query, { exact });
@@ -69,7 +52,7 @@ export class Searcher {
     } else {
       // 精确匹配
       docIds =
-        operator === "AND"
+        operator === 'AND'
           ? await this.invertedIndex.findDocumentsByTermsAnd(terms)
           : await this.invertedIndex.findDocumentsByTermsOr(terms);
     }
@@ -86,11 +69,7 @@ export class Searcher {
     }
 
     // 获取完整文档
-    const items = await this.getSearchResultItems<T>(
-      docIdsArray,
-      query,
-      options
-    );
+    const items = await this.getSearchResultItems<T>(docIdsArray, query, options);
 
     return {
       docIds: docIdsArray,
@@ -111,10 +90,7 @@ export class Searcher {
   /**
    * 模糊搜索
    */
-  private async searchFuzzy(
-    terms: string[],
-    operator: "AND" | "OR"
-  ): Promise<Set<string>> {
+  private async searchFuzzy(terms: string[], operator: 'AND' | 'OR'): Promise<Set<string>> {
     // 获取所有索引词
     const allTerms = await this.invertedIndex.getAllTerms();
 
@@ -132,14 +108,14 @@ export class Searcher {
     const docIdSets = await Promise.all(
       similarTermSets.map(async (similarTerms) => {
         const termArray = Array.from(similarTerms);
-        return operator === "AND"
+        return operator === 'AND'
           ? await this.invertedIndex.findDocumentsByTermsAnd(termArray)
           : await this.invertedIndex.findDocumentsByTermsOr(termArray);
       })
     );
 
     // 合并结果
-    if (operator === "AND") {
+    if (operator === 'AND') {
       // 求交集
       let result = docIdSets[0];
       for (let i = 1; i < docIdSets.length; i++) {
@@ -199,7 +175,7 @@ export class Searcher {
 
     // 遍历文档的所有字符串字段
     for (const [field, value] of Object.entries(doc)) {
-      if (typeof value === "string" && value) {
+      if (typeof value === 'string' && value) {
         const textLower = value.toLowerCase();
         let index = 0;
 
@@ -222,18 +198,6 @@ export class Searcher {
    * 获取文档
    */
   private async getDocument<T>(docId: string): Promise<T | null> {
-    return new Promise((resolve, reject) => {
-      const store = this.db.getStore(STORE_NAMES.DOCUMENTS);
-      const request = store.get(docId);
-
-      request.onsuccess = () => {
-        resolve(request.result || null);
-      };
-
-      request.onerror = () => {
-        const error = request.error || new Error("Unknown error");
-        reject(error);
-      };
-    });
+    return await this.documentsStore.get<T>(docId);
   }
 }

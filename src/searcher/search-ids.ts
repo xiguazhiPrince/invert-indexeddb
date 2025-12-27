@@ -1,8 +1,9 @@
-import { Searcher } from "./search";
-import { Sorter } from "./sorter";
-import { IndexedDBWrapper } from "../database/db";
-import { STORE_NAMES } from "../database/schema";
-import { SearchIdsOptions, SearchIdsResult } from "../types";
+import { Searcher } from './search';
+import { Sorter } from './sorter';
+import { IndexedDBWrapper } from '../database/db';
+import { DocumentsStore } from '../database/stores/documents-store';
+import { DocFieldsStore } from '../database/stores/doc-fields-store';
+import { SearchIdsOptions, SearchIdsResult } from '../types';
 
 /**
  * 轻量级搜索器（返回ID和指定字段）
@@ -11,20 +12,21 @@ export class SearchIds {
   private readonly searcher: Searcher;
   private readonly sorter: Sorter;
   private readonly db: IndexedDBWrapper;
+  private readonly documentsStore: DocumentsStore;
+  private readonly docFieldsStore: DocFieldsStore;
 
   constructor(searcher: Searcher, sorter: Sorter, db: IndexedDBWrapper) {
     this.searcher = searcher;
     this.sorter = sorter;
     this.db = db;
+    this.documentsStore = new DocumentsStore(db);
+    this.docFieldsStore = new DocFieldsStore(db);
   }
 
   /**
    * 执行轻量级搜索
    */
-  async searchIds(
-    query: string,
-    options: SearchIdsOptions = {}
-  ): Promise<SearchIdsResult> {
+  async searchIds(query: string, options: SearchIdsOptions = {}): Promise<SearchIdsResult> {
     const { fields = [], sortBy, limit, offset = 0 } = options;
 
     // 先执行普通搜索获取匹配的文档ID
@@ -91,10 +93,7 @@ export class SearchIds {
   /**
    * 获取文档的指定字段值
    */
-  private async getDocFields(
-    docId: string,
-    fieldNames: string[]
-  ): Promise<Record<string, any>> {
+  private async getDocFields(docId: string, fieldNames: string[]): Promise<Record<string, any>> {
     // 先从 docFields store 获取
     const docFields = await this.getDocFieldsFromStore(docId);
     if (docFields) {
@@ -113,63 +112,30 @@ export class SearchIds {
   /**
    * 从 docFields store 获取
    */
-  private async getDocFieldsFromStore(
-    docId: string
-  ): Promise<Record<string, any> | null> {
-    return new Promise((resolve, reject) => {
-      const store = this.db.getStore(STORE_NAMES.DOC_FIELDS);
-      const request = store.get(docId);
-
-      request.onsuccess = () => {
-        if (request.result) {
-          resolve(request.result.fields || null);
-        } else {
-          resolve(null);
-        }
-      };
-
-      request.onerror = () => {
-        const error = request.error || new Error("Unknown error");
-        reject(new Error(`Failed to get doc fields: ${String(error)}`));
-      };
-    });
+  private async getDocFieldsFromStore(docId: string): Promise<Record<string, any> | null> {
+    return await this.docFieldsStore.get(docId);
   }
 
   /**
    * 获取完整文档
    */
   private async getFullDocument(docId: string): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const store = this.db.getStore(STORE_NAMES.DOCUMENTS);
-      const request = store.get(docId);
-
-      request.onsuccess = () => {
-        resolve(request.result || null);
-      };
-
-      request.onerror = () => {
-        const error = request.error || new Error("Unknown error");
-        reject(new Error(`Failed to get document: ${String(error)}`));
-      };
-    });
+    return await this.documentsStore.get(docId);
   }
 
   /**
    * 提取指定字段
    */
-  private extractFields(
-    doc: Record<string, any>,
-    fieldNames: string[]
-  ): Record<string, any> {
+  private extractFields(doc: Record<string, any>, fieldNames: string[]): Record<string, any> {
     const result: Record<string, any> = {};
 
     for (const fieldName of fieldNames) {
       // 支持嵌套字段（如 'user.name'）
-      const parts = fieldName.split(".");
+      const parts = fieldName.split('.');
       let value: any = doc;
 
       for (const part of parts) {
-        if (value && typeof value === "object" && part in value) {
+        if (value && typeof value === 'object' && part in value) {
           value = value[part];
         } else {
           value = undefined;
