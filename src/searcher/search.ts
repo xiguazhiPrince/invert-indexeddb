@@ -1,15 +1,15 @@
-import { InvertedIndex } from '../indexer/inverted-index';
-import { QueryParser } from './query-parser';
-import { IndexedDBWrapper } from '../database/db';
-import { STORE_NAMES } from '../database/schema';
+import { InvertedIndex } from "../indexer/inverted-index";
+import { QueryParser } from "./query-parser";
+import { IndexedDBWrapper } from "../database/db";
+import { STORE_NAMES } from "../database/schema";
 import {
   SearchOptions,
   SearchResult,
   SearchResultItem,
   MatchInfo,
   ITokenizer,
-} from '../types';
-import { findSimilarTerms } from '../indexer/ngram';
+} from "../types";
+import { findSimilarTerms } from "../indexer/ngram";
 
 /**
  * 搜索器
@@ -38,14 +38,14 @@ export class Searcher {
     query: string,
     options: SearchOptions = {}
   ): Promise<SearchResult<T>> {
-    if (!query || typeof query !== 'string') {
+    if (!query || typeof query !== "string") {
       return { docIds: [], items: [], total: 0 };
     }
 
     const {
       fuzzy = false,
       exact = false,
-      operator = 'AND',
+      operator = "AND",
       limit,
       offset = 0,
     } = options;
@@ -69,7 +69,7 @@ export class Searcher {
     } else {
       // 精确匹配
       docIds =
-        operator === 'AND'
+        operator === "AND"
           ? await this.invertedIndex.findDocumentsByTermsAnd(terms)
           : await this.invertedIndex.findDocumentsByTermsOr(terms);
     }
@@ -113,7 +113,7 @@ export class Searcher {
    */
   private async searchFuzzy(
     terms: string[],
-    operator: 'AND' | 'OR'
+    operator: "AND" | "OR"
   ): Promise<Set<string>> {
     // 获取所有索引词
     const allTerms = await this.invertedIndex.getAllTerms();
@@ -132,14 +132,14 @@ export class Searcher {
     const docIdSets = await Promise.all(
       similarTermSets.map(async (similarTerms) => {
         const termArray = Array.from(similarTerms);
-        return operator === 'AND'
+        return operator === "AND"
           ? await this.invertedIndex.findDocumentsByTermsAnd(termArray)
           : await this.invertedIndex.findDocumentsByTermsOr(termArray);
       })
     );
 
     // 合并结果
-    if (operator === 'AND') {
+    if (operator === "AND") {
       // 求交集
       let result = docIdSets[0];
       for (let i = 1; i < docIdSets.length; i++) {
@@ -199,7 +199,7 @@ export class Searcher {
 
     // 遍历文档的所有字符串字段
     for (const [field, value] of Object.entries(doc)) {
-      if (typeof value === 'string' && value) {
+      if (typeof value === "string" && value) {
         const textLower = value.toLowerCase();
         let index = 0;
 
@@ -231,10 +231,9 @@ export class Searcher {
       };
 
       request.onerror = () => {
-        const error = request.error || new Error('Unknown error');
+        const error = request.error || new Error("Unknown error");
         reject(error);
       };
     });
   }
 }
-
