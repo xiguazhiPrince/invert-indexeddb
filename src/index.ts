@@ -286,11 +286,18 @@ export class InvertedIndexDB {
       // 保存字段索引
       await this.saveDocFields(docId, doc, indexFields);
     } else {
-      // 索引所有字符串字段
-      for (const value of Object.values(doc)) {
-        if (typeof value === 'string' && value) {
-          texts.push(value);
+      // 索引所有字符串字段（排除系统字段）
+      const extractedFields = this.extractIndexableFields(doc);
+      for (const fieldName of extractedFields) {
+        const value = this.getFieldValue(doc, fieldName);
+        if (value != null) {
+          texts.push(String(value));
         }
+      }
+
+      // 保存字段索引
+      if (extractedFields.length > 0) {
+        await this.saveDocFields(docId, doc, extractedFields);
       }
     }
 

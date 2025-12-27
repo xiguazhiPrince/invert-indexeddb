@@ -208,7 +208,8 @@
                     initialDocs.push(generateTestDoc(i));
                 }
                 
-                await searchDB.batchAddDocuments(initialDocs, ['title', 'content']);
+              
+                await searchDB.batchAddDocuments(initialDocs);
                 
                 showResult('initResult', `成功添加 ${initialDocs.length} 个测试文档！`, 'success');
                 
@@ -293,7 +294,7 @@
                     docs.push(generateTestDoc(startIndex + i));
                 }
                 
-                await searchDB.batchAddDocuments(docs, ['title', 'content']);
+                await searchDB.batchAddDocuments(docs);
                 
                 showResult('addMoreResult', `成功添加 ${docs.length} 个文档！`, 'success');
                 
