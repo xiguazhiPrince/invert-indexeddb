@@ -21,8 +21,8 @@ import { STORE_NAMES } from './database/schema';
  * 倒排索引 IndexedDB SDK 主类
  */
 export class InvertedIndexDB {
-  private db: IndexedDBWrapper;
-  private tokenizer: ITokenizer;
+  private readonly db: IndexedDBWrapper;
+  private readonly tokenizer: ITokenizer;
   private invertedIndex: InvertedIndex | null = null;
   private searcher: Searcher | null = null;
   private sorter: Sorter | null = null;
