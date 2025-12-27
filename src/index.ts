@@ -407,5 +407,5 @@ export type {
   Stats,
 } from './types';
 
-export { DefaultTokenizer } from './indexer/tokenizer';
+export { DefaultTokenizer, MixedTokenizer } from './indexer/tokenizer';
 export { Highlighter } from './utils/highlight';
