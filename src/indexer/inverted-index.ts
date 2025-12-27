@@ -1,5 +1,6 @@
 import { IndexedDBWrapper } from '../database/db';
-import { STORE_NAMES } from '../database/schema';
+import { InvertedIndexStore } from '../database/stores/inverted-index-store';
+import { DocTermsStore } from '../database/stores/doc-terms-store';
 import { ITokenizer, InvertedIndexItem, DocTerm } from '../types';
 
 /**
@@ -8,10 +9,14 @@ import { ITokenizer, InvertedIndexItem, DocTerm } from '../types';
 export class InvertedIndex {
   private readonly db: IndexedDBWrapper;
   private readonly tokenizer: ITokenizer;
+  private readonly invertedIndexStore: InvertedIndexStore;
+  private readonly docTermsStore: DocTermsStore;
 
   constructor(db: IndexedDBWrapper, tokenizer: ITokenizer) {
     this.db = db;
     this.tokenizer = tokenizer;
+    this.invertedIndexStore = new InvertedIndexStore(db);
+    this.docTermsStore = new DocTermsStore(db);
   }
 
   /**
@@ -62,106 +67,43 @@ export class InvertedIndex {
    * 添加词到倒排索引
    */
   private async addTermToIndex(term: string, docId: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const store = this.db.getStore(STORE_NAMES.INVERTED_INDEX, 'readwrite');
-      const request = store.get(term);
+    const existingItem = await this.invertedIndexStore.get(term);
 
-      request.onsuccess = () => {
-        const transaction = request.transaction!;
-        const store = transaction.objectStore(STORE_NAMES.INVERTED_INDEX);
-
-        if (request.result) {
-          // 更新现有索引项
-          const item: InvertedIndexItem = request.result;
-          if (!item.docIds) {
-            item.docIds = new Set();
-          }
-          // IndexedDB 不支持 Set，需要转换为数组存储
-          const docIdsArray = Array.from(item.docIds);
-          if (!docIdsArray.includes(docId)) {
-            docIdsArray.push(docId);
-            item.docIds = new Set(docIdsArray);
-            item.count = docIdsArray.length;
-          }
-
-          const updateRequest = store.put({
-            term: item.term,
-            docIds: Array.from(item.docIds), // 转换为数组存储
-            count: item.count,
-          });
-
-          updateRequest.onsuccess = () => resolve();
-          updateRequest.onerror = () => {
-            const error = updateRequest.error || new Error('Unknown error');
-            reject(error);
-          };
-        } else {
-          // 创建新索引项
-          const newItem = {
-            term,
-            docIds: [docId],
-            count: 1,
-          };
-
-          const addRequest = store.add(newItem);
-          addRequest.onsuccess = () => resolve();
-          addRequest.onerror = () => {
-            const error = addRequest.error || new Error('Unknown error');
-            reject(new Error(`Failed to add term to index: ${error.message}`));
-          };
-        }
+    if (existingItem) {
+      // 更新现有索引项
+      if (!existingItem.docIds.has(docId)) {
+        existingItem.docIds.add(docId);
+        existingItem.count = existingItem.docIds.size;
+        await this.invertedIndexStore.put(existingItem);
+      }
+    } else {
+      // 创建新索引项
+      const newItem: InvertedIndexItem = {
+        term,
+        docIds: new Set([docId]),
+        count: 1,
       };
-
-      request.onerror = () => {
-        const error = request.error || new Error('Unknown error');
-        reject(new Error(`Failed to get term from index: ${error.message}`));
-      };
-    });
+      await this.invertedIndexStore.add(newItem);
+    }
   }
 
   /**
    * 保存文档-词关系
    */
   private async saveDocTerm(docId: string, term: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const store = this.db.getStore(STORE_NAMES.DOC_TERMS, 'readwrite');
-      const docTerm: DocTerm = { docId, term };
-
-      const request = store.put(docTerm);
-      request.onsuccess = () => resolve();
-      request.onerror = () => {
-        const error = request.error || new Error('Unknown error');
-        reject(new Error(`Failed to save doc term: ${error.message}`));
-      };
-    });
+    const docTerm: DocTerm = { docId, term };
+    await this.docTermsStore.put(docTerm);
   }
 
   /**
    * 从倒排索引中查找文档ID
    */
   async findDocumentsByTerm(term: string): Promise<Set<string>> {
-    return new Promise((resolve, reject) => {
-      const store = this.db.getStore(STORE_NAMES.INVERTED_INDEX);
-      const request = store.get(term);
-
-      request.onsuccess = () => {
-        if (request.result) {
-          const item = request.result;
-          // 从数组恢复 Set
-          const docIds = Array.isArray(item.docIds)
-            ? new Set<string>(item.docIds as string[])
-            : new Set<string>();
-          resolve(docIds);
-        } else {
-          resolve(new Set<string>());
-        }
-      };
-
-      request.onerror = () => {
-        const error = request.error || new Error('Unknown error');
-        reject(error);
-      };
-    });
+    const item = await this.invertedIndexStore.get(term);
+    if (item) {
+      return item.docIds;
+    }
+    return new Set<string>();
   }
 
   /**
@@ -172,9 +114,7 @@ export class InvertedIndex {
       return new Set();
     }
 
-    const docIdSets = await Promise.all(
-      terms.map((term) => this.findDocumentsByTerm(term))
-    );
+    const docIdSets = await Promise.all(terms.map((term) => this.findDocumentsByTerm(term)));
 
     // 求交集
     if (docIdSets.length === 0) {
@@ -197,9 +137,7 @@ export class InvertedIndex {
       return new Set();
     }
 
-    const docIdSets = await Promise.all(
-      terms.map((term) => this.findDocumentsByTerm(term))
-    );
+    const docIdSets = await Promise.all(terms.map((term) => this.findDocumentsByTerm(term)));
 
     // 求并集
     const result = new Set<string>();
@@ -232,127 +170,45 @@ export class InvertedIndex {
    * 获取文档的所有词
    */
   private async getDocumentTerms(docId: string): Promise<Set<string>> {
-    return new Promise((resolve, reject) => {
-      const store = this.db.getStore(STORE_NAMES.DOC_TERMS);
-      const index = store.index('docId');
-      const request = index.getAll(docId);
-
-      request.onsuccess = () => {
-        const terms = new Set<string>();
-        if (request.result) {
-          for (const docTerm of request.result) {
-            terms.add(docTerm.term);
-          }
-        }
-        resolve(terms);
-      };
-
-      request.onerror = () => {
-        const error = request.error || new Error('Unknown error');
-        reject(new Error(`Failed to get term from index: ${error.message}`));
-      };
-    });
+    const docTerms = await this.docTermsStore.getByDocId(docId);
+    const terms = new Set<string>();
+    for (const docTerm of docTerms) {
+      terms.add(docTerm.term);
+    }
+    return terms;
   }
 
   /**
    * 从倒排索引中移除词
    */
   private async removeTermFromIndex(term: string, docId: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const store = this.db.getStore(STORE_NAMES.INVERTED_INDEX, 'readwrite');
-      const request = store.get(term);
+    const item = await this.invertedIndexStore.get(term);
 
-      request.onsuccess = () => {
-        const transaction = request.transaction!;
-        const store = transaction.objectStore(STORE_NAMES.INVERTED_INDEX);
+    if (item && item.docIds.has(docId)) {
+      item.docIds.delete(docId);
+      item.count = item.docIds.size;
 
-        if (request.result) {
-          const item = request.result;
-          const docIdsArray = Array.isArray(item.docIds)
-            ? [...item.docIds]
-            : Array.from(item.docIds || []);
-
-          const index = docIdsArray.indexOf(docId);
-          if (index > -1) {
-            docIdsArray.splice(index, 1);
-            item.count = docIdsArray.length;
-
-            if (docIdsArray.length === 0) {
-              // 如果没有文档了，删除整个索引项
-              const deleteRequest = store.delete(term);
-              deleteRequest.onsuccess = () => resolve();
-              deleteRequest.onerror = () => {
-                const error = deleteRequest.error || new Error('Unknown error');
-                reject(new Error(`Failed to delete term from index: ${error.message}`));
-              };
-            } else {
-              // 更新索引项
-              item.docIds = docIdsArray;
-              const updateRequest = store.put(item);
-              updateRequest.onsuccess = () => resolve();
-              updateRequest.onerror = () => {
-                const error = updateRequest.error || new Error('Unknown error');
-                reject(new Error(`Failed to update term in index: ${error.message}`));
-              };
-            }
-          } else {
-            resolve();
-          }
-        } else {
-          resolve();
-        }
-      };
-
-      request.onerror = () => {
-        const error = request.error || new Error('Unknown error');
-        reject(new Error(`Failed to get term from index: ${error.message}`));
-      };
-    });
+      if (item.docIds.size === 0) {
+        // 如果没有文档了，删除整个索引项
+        await this.invertedIndexStore.delete(term);
+      } else {
+        // 更新索引项
+        await this.invertedIndexStore.put(item);
+      }
+    }
   }
 
   /**
    * 删除文档的所有词关系
    */
   private async removeDocTerms(docId: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const store = this.db.getStore(STORE_NAMES.DOC_TERMS, 'readwrite');
-      const index = store.index('docId');
-      const request = index.openCursor(IDBKeyRange.only(docId));
-
-      request.onsuccess = () => {
-        const cursor = request.result;
-        if (cursor) {
-          cursor.delete();
-          cursor.continue();
-        } else {
-          resolve();
-        }
-      };
-
-      request.onerror = () => {
-        const error = request.error || new Error('Unknown error');
-        reject(new Error(`Failed to remove doc terms: ${error.message}`));
-      };
-    });
+    await this.docTermsStore.deleteByDocId(docId);
   }
 
   /**
    * 获取所有索引词
    */
   async getAllTerms(): Promise<string[]> {
-    return new Promise((resolve, reject) => {
-      const store = this.db.getStore(STORE_NAMES.INVERTED_INDEX);
-      const request = store.getAllKeys();
-
-      request.onsuccess = () => {
-        resolve(request.result as string[]);
-      };
-
-      request.onerror = () => {
-        const error = request.error || new Error('Unknown error');
-        reject(new Error(`Failed to get term from index: ${error.message}`));
-      };
-    });
+    return await this.invertedIndexStore.getAllKeys();
   }
 }
-

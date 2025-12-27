@@ -1,4 +1,8 @@
 import { IndexedDBWrapper } from './database/db';
+import { DocumentsStore } from './database/stores/documents-store';
+import { DocFieldsStore } from './database/stores/doc-fields-store';
+import { InvertedIndexStore } from './database/stores/inverted-index-store';
+import { DocTermsStore } from './database/stores/doc-terms-store';
 import { InvertedIndex } from './indexer/inverted-index';
 import { DefaultTokenizer } from './indexer/tokenizer';
 import { Searcher } from './searcher/search';
@@ -15,7 +19,6 @@ import {
   SearchIdsResult,
   Stats,
 } from './types';
-import { STORE_NAMES } from './database/schema';
 
 /**
  * 倒排索引 IndexedDB SDK 主类
@@ -23,6 +26,10 @@ import { STORE_NAMES } from './database/schema';
 export class InvertedIndexDB {
   private readonly db: IndexedDBWrapper;
   private readonly tokenizer: ITokenizer;
+  private documentsStore: DocumentsStore | null = null;
+  private docFieldsStore: DocFieldsStore | null = null;
+  private invertedIndexStore: InvertedIndexStore | null = null;
+  private docTermsStore: DocTermsStore | null = null;
   private invertedIndex: InvertedIndex | null = null;
   private searcher: Searcher | null = null;
   private sorter: Sorter | null = null;
@@ -43,6 +50,10 @@ export class InvertedIndexDB {
     }
 
     await this.db.open();
+    this.documentsStore = new DocumentsStore(this.db);
+    this.docFieldsStore = new DocFieldsStore(this.db);
+    this.invertedIndexStore = new InvertedIndexStore(this.db);
+    this.docTermsStore = new DocTermsStore(this.db);
     this.invertedIndex = new InvertedIndex(this.db, this.tokenizer);
     this.searcher = new Searcher(this.db, this.invertedIndex, this.tokenizer);
     this.sorter = new Sorter(this.db);
@@ -62,10 +73,7 @@ export class InvertedIndexDB {
   /**
    * 添加文档
    */
-  async addDocument<T = any>(
-    doc: T,
-    indexFields?: string[]
-  ): Promise<string> {
+  async addDocument<T = any>(doc: T, indexFields?: string[]): Promise<string> {
     this.ensureInitialized();
 
     const docId = generateId();
@@ -88,11 +96,7 @@ export class InvertedIndexDB {
   /**
    * 更新文档
    */
-  async updateDocument<T = any>(
-    docId: string,
-    doc: T,
-    indexFields?: string[]
-  ): Promise<void> {
+  async updateDocument<T = any>(docId: string, doc: T, indexFields?: string[]): Promise<void> {
     this.ensureInitialized();
 
     // 删除旧索引
@@ -137,25 +141,17 @@ export class InvertedIndexDB {
   async getDocument<T = any>(docId: string): Promise<T | null> {
     this.ensureInitialized();
 
-    return new Promise((resolve, reject) => {
-      const store = this.db.getStore(STORE_NAMES.DOCUMENTS);
-      const request = store.get(docId);
+    if (!this.documentsStore) {
+      throw new Error('DocumentsStore not initialized');
+    }
 
-      request.onsuccess = () => {
-        resolve(request.result || null);
-      };
-
-      request.onerror = () => reject(request.error);
-    });
+    return await this.documentsStore.get<T>(docId);
   }
 
   /**
    * 批量添加文档
    */
-  async batchAddDocuments<T = any>(
-    docs: T[],
-    indexFields?: string[]
-  ): Promise<string[]> {
+  async batchAddDocuments<T = any>(docs: T[], indexFields?: string[]): Promise<string[]> {
     this.ensureInitialized();
 
     const docIds: string[] = [];
@@ -171,10 +167,7 @@ export class InvertedIndexDB {
   /**
    * 搜索
    */
-  async search<T = any>(
-    query: string,
-    options?: SearchOptions
-  ): Promise<SearchResult<T>> {
+  async search<T = any>(query: string, options?: SearchOptions): Promise<SearchResult<T>> {
     this.ensureInitialized();
 
     if (!this.searcher) {
@@ -187,10 +180,7 @@ export class InvertedIndexDB {
   /**
    * 轻量级搜索（返回ID和指定字段）
    */
-  async searchIds(
-    query: string,
-    options?: SearchIdsOptions
-  ): Promise<SearchIdsResult> {
+  async searchIds(query: string, options?: SearchIdsOptions): Promise<SearchIdsResult> {
     this.ensureInitialized();
 
     if (!this.searchIdsInstance) {
@@ -244,49 +234,39 @@ export class InvertedIndexDB {
    * 保存文档
    */
   private async saveDocument(docId: string, doc: any): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const store = this.db.getStore(STORE_NAMES.DOCUMENTS, 'readwrite');
-      const request = store.put(doc);
+    if (!this.documentsStore) {
+      throw new Error('DocumentsStore not initialized');
+    }
 
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
+    await this.documentsStore.put(doc);
   }
 
   /**
    * 删除文档
    */
   private async deleteDocumentFromStore(docId: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const store = this.db.getStore(STORE_NAMES.DOCUMENTS, 'readwrite');
-      const request = store.delete(docId);
+    if (!this.documentsStore) {
+      throw new Error('DocumentsStore not initialized');
+    }
 
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
+    await this.documentsStore.delete(docId);
   }
 
   /**
    * 删除文档字段索引
    */
   private async deleteDocFields(docId: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const store = this.db.getStore(STORE_NAMES.DOC_FIELDS, 'readwrite');
-      const request = store.delete(docId);
+    if (!this.docFieldsStore) {
+      throw new Error('DocFieldsStore not initialized');
+    }
 
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
+    await this.docFieldsStore.delete(docId);
   }
 
   /**
    * 建立文档索引
    */
-  private async indexDocument(
-    docId: string,
-    doc: any,
-    indexFields?: string[]
-  ): Promise<void> {
+  private async indexDocument(docId: string, doc: any, indexFields?: string[]): Promise<void> {
     if (!this.invertedIndex) {
       return;
     }
@@ -324,11 +304,11 @@ export class InvertedIndexDB {
   /**
    * 保存文档字段索引
    */
-  private async saveDocFields(
-    docId: string,
-    doc: any,
-    fields: string[]
-  ): Promise<void> {
+  private async saveDocFields(docId: string, doc: any, fields: string[]): Promise<void> {
+    if (!this.docFieldsStore) {
+      throw new Error('DocFieldsStore not initialized');
+    }
+
     const fieldValues: Record<string, any> = {};
 
     for (const fieldName of fields) {
@@ -338,16 +318,7 @@ export class InvertedIndexDB {
       }
     }
 
-    return new Promise((resolve, reject) => {
-      const store = this.db.getStore(STORE_NAMES.DOC_FIELDS, 'readwrite');
-      const request = store.put({
-        docId,
-        fields: fieldValues,
-      });
-
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
+    await this.docFieldsStore.put(docId, fieldValues);
   }
 
   /**
@@ -372,49 +343,22 @@ export class InvertedIndexDB {
    * 获取所有文档
    */
   private async getAllDocuments(): Promise<Map<string, any>> {
-    return new Promise((resolve, reject) => {
-      const store = this.db.getStore(STORE_NAMES.DOCUMENTS);
-      const request = store.getAll();
+    if (!this.documentsStore) {
+      throw new Error('DocumentsStore not initialized');
+    }
 
-      request.onsuccess = () => {
-        const docs = new Map<string, any>();
-        if (request.result) {
-          for (const doc of request.result) {
-            if (doc.docId) {
-              docs.set(doc.docId, doc);
-            }
-          }
-        }
-        resolve(docs);
-      };
-
-      request.onerror = () => reject(request.error);
-    });
+    return await this.documentsStore.getAll();
   }
 
   /**
    * 清空索引
    */
   private async clearIndexes(): Promise<void> {
-    const promises = [
-      this.clearStore(STORE_NAMES.INVERTED_INDEX),
-      this.clearStore(STORE_NAMES.DOC_TERMS),
-    ];
+    if (!this.invertedIndexStore || !this.docTermsStore) {
+      throw new Error('Stores not initialized');
+    }
 
-    await Promise.all(promises);
-  }
-
-  /**
-   * 清空 Store
-   */
-  private async clearStore(storeName: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const store = this.db.getStore(storeName, 'readwrite');
-      const request = store.clear();
-
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
+    await Promise.all([this.invertedIndexStore.clear(), this.docTermsStore.clear()]);
   }
 
   /**
@@ -458,4 +402,3 @@ export type {
 
 export { DefaultTokenizer } from './indexer/tokenizer';
 export { Highlighter } from './utils/highlight';
-
