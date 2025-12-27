@@ -95,23 +95,26 @@ export class MixedTokenizer implements ITokenizer {
    * 这样既能捕获词语边界，又能保证单字搜索的召回率
    * @returns tokens数组和实际处理的字符长度
    */
-  private processChineseChars(text: string, startPos: number): { tokens: Token[]; charLength: number } {
+  private processChineseChars(
+    text: string,
+    startPos: number
+  ): { tokens: Token[]; charLength: number } {
     const tokens: Token[] = [];
     let i = startPos;
     const chineseStart = i;
-    
+
     // 先收集所有连续的中文字符
     while (i < text.length && this.isChinese(text[i])) {
       i++;
     }
-    
+
     const chineseText = text.slice(chineseStart, i);
     const chineseLength = chineseText.length;
-    
+
     if (chineseLength === 0) {
       return { tokens: [], charLength: 0 };
     }
-    
+
     // 1. 生成单字tokens（保证单字搜索的召回率）
     for (let j = 0; j < chineseLength; j++) {
       tokens.push({
@@ -120,7 +123,7 @@ export class MixedTokenizer implements ITokenizer {
         length: 1,
       });
     }
-    
+
     // 2. 生成2-gram tokens（捕获词语边界，提高搜索准确性）
     // 例如 "你好世界" -> ["你好", "好世", "世界"]
     // 注意：只有当长度 >= 2 时才生成 2-gram
@@ -134,7 +137,7 @@ export class MixedTokenizer implements ITokenizer {
         });
       }
     }
-    
+
     return { tokens, charLength: chineseLength };
   }
 
