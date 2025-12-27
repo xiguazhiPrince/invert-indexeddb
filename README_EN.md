@@ -248,4 +248,3 @@ Supports all modern browsers (with IndexedDB support):
 ## License
 
 MIT
-
