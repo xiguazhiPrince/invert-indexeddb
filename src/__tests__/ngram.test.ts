@@ -68,7 +68,7 @@ describe('N-gram', () => {
     it('should find similar terms', () => {
       const candidates = ['hello', 'world', 'hell', 'help'];
       const similar = findSimilarTerms('hello', candidates, 0.6);
-      
+
       expect(similar.length).toBeGreaterThan(0);
       expect(similar[0].term).toBe('hello');
     });
@@ -76,9 +76,8 @@ describe('N-gram', () => {
     it('should return empty array if no similar terms', () => {
       const candidates = ['world', 'test'];
       const similar = findSimilarTerms('hello', candidates, 0.9);
-      
+
       expect(similar.length).toBe(0);
     });
   });
 });
-

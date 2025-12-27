@@ -14,7 +14,7 @@ describe('DefaultTokenizer', () => {
   it('should tokenize English text', () => {
     const text = 'Hello world';
     const tokens = tokenizer.tokenize(text);
-    
+
     expect(tokens).toHaveLength(2);
     expect(tokens[0].term).toBe('hello');
     expect(tokens[0].position).toBe(0);
@@ -25,7 +25,7 @@ describe('DefaultTokenizer', () => {
   it('should tokenize Chinese text', () => {
     const text = '你好世界';
     const tokens = tokenizer.tokenize(text);
-    
+
     expect(tokens.length).toBeGreaterThan(0);
     expect(tokens[0].term).toBe('你好世界');
   });
@@ -33,7 +33,7 @@ describe('DefaultTokenizer', () => {
   it('should tokenize mixed text', () => {
     const text = 'Hello 世界 world';
     const tokens = tokenizer.tokenize(text);
-    
+
     expect(tokens.length).toBeGreaterThan(0);
   });
 
@@ -50,9 +50,8 @@ describe('DefaultTokenizer', () => {
   it('should convert to lowercase', () => {
     const text = 'Hello WORLD';
     const tokens = tokenizer.tokenize(text);
-    
+
     expect(tokens[0].term).toBe('hello');
     expect(tokens[1].term).toBe('world');
   });
 });
-

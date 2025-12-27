@@ -7,7 +7,7 @@ import { InvertedIndexDB } from '../index';
 // Mock IndexedDB
 const mockIndexedDB = () => {
   const stores: Map<string, Map<any, any>> = new Map();
-  
+
   return {
     open: jest.fn(),
     objectStoreNames: {
@@ -49,4 +49,3 @@ describe('InvertedIndexDB', () => {
     expect(db).toBeInstanceOf(InvertedIndexDB);
   });
 });
-
