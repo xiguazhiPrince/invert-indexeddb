@@ -210,7 +210,9 @@
 
         async function initDB() {
             try {
-                searchDB = new InvertedIndexDB.InvertedIndexDB('testDB');
+                searchDB = new InvertedIndexDB.InvertedIndexDB('testDB', {
+                    tokenizer: new InvertedIndexDB.MixedTokenizer()
+                });
                 await searchDB.init();
                 document.getElementById('initStatus').textContent = '已初始化';
                 document.getElementById('initStatus').className = 'status ready';

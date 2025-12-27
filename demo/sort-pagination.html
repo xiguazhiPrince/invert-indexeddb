@@ -262,7 +262,9 @@
 
         async function initAndAddData() {
             try {
-                searchDB = new InvertedIndexDB.InvertedIndexDB('sortPaginationDB');
+                searchDB = new InvertedIndexDB.InvertedIndexDB('sortPaginationDB', {
+                    tokenizer: new InvertedIndexDB.MixedTokenizer()
+                });
                 await searchDB.init();
                 
                 // 清空旧数据

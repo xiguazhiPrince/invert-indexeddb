@@ -196,7 +196,9 @@
 
         async function initAndAddData() {
             try {
-                searchDB = new InvertedIndexDB.InvertedIndexDB('statsDB');
+                searchDB = new InvertedIndexDB.InvertedIndexDB('statsDB', {
+                    tokenizer: new InvertedIndexDB.MixedTokenizer()
+                });
                 await searchDB.init();
                 
                 // 清空旧数据

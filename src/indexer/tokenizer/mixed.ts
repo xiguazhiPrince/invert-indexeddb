@@ -7,7 +7,7 @@ import { ITokenizer, Token } from '../../types';
  * 2. 中文字符分词（逐字分词，每个中文字符作为独立的token）
  * 3. 数字处理（支持整数和小数）
  * 4. 中英文混合文本处理
- * 
+ *
  * 示例：
  * "Hello世界123" -> ["hello", "世", "界", "123"]
  * "state-of-the-art技术" -> ["state-of-the-art", "技", "术"]
@@ -15,16 +15,16 @@ import { ITokenizer, Token } from '../../types';
 export class MixedTokenizer implements ITokenizer {
   // 匹配中文字符（包括扩展区域）
   private readonly chineseCharRegex = /[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]/;
-  
+
   // 匹配英文字母
   private readonly englishCharRegex = /[a-zA-Z]/;
-  
+
   // 匹配数字
   private readonly digitRegex = /\d/;
-  
+
   // 匹配英文单词（包括连字符和撇号）
   private readonly englishWordRegex = /[a-zA-Z]+(?:[-'][a-zA-Z]+)*/g;
-  
+
   // 匹配数字（包括小数）
   private readonly numberRegex = /\d+(?:\.\d+)?/g;
 
@@ -52,7 +52,10 @@ export class MixedTokenizer implements ITokenizer {
   /**
    * 处理英文单词
    */
-  private processEnglishWord(text: string, startPos: number): { word: string; length: number } | null {
+  private processEnglishWord(
+    text: string,
+    startPos: number
+  ): { word: string; length: number } | null {
     this.englishWordRegex.lastIndex = 0;
     const match = this.englishWordRegex.exec(text.slice(startPos));
     if (match) {
@@ -100,7 +103,9 @@ export class MixedTokenizer implements ITokenizer {
    * 判断是否应该跳过当前字符
    */
   private shouldSkip(char: string): boolean {
-    return /\s/.test(char) || (!this.isChinese(char) && !this.isEnglish(char) && !this.isDigit(char));
+    return (
+      /\s/.test(char) || (!this.isChinese(char) && !this.isEnglish(char) && !this.isDigit(char))
+    );
   }
 
   /**
@@ -114,11 +119,13 @@ export class MixedTokenizer implements ITokenizer {
       const result = this.processEnglishWord(text, pos);
       if (result) {
         return {
-          tokens: [{
-            term: result.word,
-            position: pos,
-            length: result.length,
-          }],
+          tokens: [
+            {
+              term: result.word,
+              position: pos,
+              length: result.length,
+            },
+          ],
           nextPos: pos + result.length,
         };
       }
@@ -129,11 +136,13 @@ export class MixedTokenizer implements ITokenizer {
       const result = this.processNumber(text, pos);
       if (result) {
         return {
-          tokens: [{
-            term: result.num,
-            position: pos,
-            length: result.length,
-          }],
+          tokens: [
+            {
+              term: result.num,
+              position: pos,
+              length: result.length,
+            },
+          ],
           nextPos: pos + result.length,
         };
       }

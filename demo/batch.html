@@ -206,7 +206,9 @@
 
         async function initDB() {
             try {
-                searchDB = new InvertedIndexDB.InvertedIndexDB('batchTestDB');
+                searchDB = new InvertedIndexDB.InvertedIndexDB('batchTestDB', {
+                    tokenizer: new InvertedIndexDB.MixedTokenizer()
+                });
                 await searchDB.init();
                 showResult('initResult', '数据库初始化成功！', 'success');
             } catch (error) {
