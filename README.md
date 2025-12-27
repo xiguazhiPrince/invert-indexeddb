@@ -1,5 +1,7 @@
 # invert-indexeddb
 
+[English](README_EN.md) | 中文
+
 一个基于倒排索引算法的 IndexedDB 全文搜索 SDK，支持快速关键词检索、模糊匹配、排序等功能。
 
 ## 特性
