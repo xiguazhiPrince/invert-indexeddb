@@ -51,6 +51,10 @@ export class QueryParser {
 
   /**
    * 提取查询中的短语（用引号包围的部分）
+   * 该方法可用于实现混合查询，例如：
+   * 短语部分："exact phrase" 进行精确匹配
+   * 剩余部分：hello world 进行分词匹配
+   * 这样可以在一个查询中同时支持精确短语匹配和普通关键词搜索。
    */
   extractPhrases(query: string): { phrases: string[]; remainingQuery: string } {
     const phrases: string[] = [];
