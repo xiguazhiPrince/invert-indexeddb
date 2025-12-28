@@ -1,5 +1,6 @@
 import { InvertedIndex } from '../indexer/inverted-index';
 import { QueryParser } from './query-parser';
+import { Sorter } from './sorter';
 import { IndexedDBWrapper } from '../database/db';
 import { DocumentsStore } from '../database/stores/documents-store';
 import { SearchOptions, SearchResult, SearchResultItem, MatchInfo, ITokenizer } from '../types';
@@ -14,6 +15,7 @@ export class Searcher {
   private readonly db: IndexedDBWrapper;
   private readonly tokenizer: ITokenizer;
   private readonly documentsStore: DocumentsStore;
+  private readonly sorter: Sorter;
 
   constructor(db: IndexedDBWrapper, invertedIndex: InvertedIndex, tokenizer: ITokenizer) {
     this.db = db;
@@ -21,6 +23,7 @@ export class Searcher {
     this.tokenizer = tokenizer;
     this.queryParser = new QueryParser(tokenizer);
     this.documentsStore = new DocumentsStore(db);
+    this.sorter = new Sorter(db);
   }
 
   /**
@@ -31,7 +34,7 @@ export class Searcher {
       return { docIds: [], items: [], total: 0 };
     }
 
-    const { fuzzy = false, exact = false, operator = 'AND', limit, offset = 0 } = options;
+    const { fuzzy = false, exact = false, operator = 'AND', limit, offset = 0, sortBy } = options;
 
     // 解析查询
     const { terms, isPhrase } = this.queryParser.parse(query, { exact });
@@ -57,10 +60,21 @@ export class Searcher {
           : await this.invertedIndex.findDocumentsByTermsOr(terms);
     }
 
-    // 转换为数组并应用分页
+    // 转换为数组
     let docIdsArray = Array.from(docIds);
+
+    // 排序
+    if (sortBy && docIdsArray.length > 0) {
+      // 使用 Sorter 进行自定义排序
+      docIdsArray = await this.sorter.sort(docIdsArray, sortBy);
+    } else {
+      // 默认排序：按 docId 排序（docId 前缀包含时间戳，按字符串排序即可得到时间顺序）
+      docIdsArray.sort((a, b) => a.localeCompare(b));
+    }
+
     const total = docIdsArray.length;
 
+    // 应用分页
     if (offset > 0) {
       docIdsArray = docIdsArray.slice(offset);
     }
@@ -156,9 +170,10 @@ export class Searcher {
     const docIdSets = await Promise.all(
       similarTermSets.map(async (similarTerms) => {
         const termArray = Array.from(similarTerms);
-        return operator === 'AND'
-          ? await this.invertedIndex.findDocumentsByTermsAnd(termArray)
-          : await this.invertedIndex.findDocumentsByTermsOr(termArray);
+        // 对于相似词集合，始终使用 OR 操作（相似词之间是"或"的关系）
+        // operator 参数只用于多个查询词之间的合并
+        const result = await this.invertedIndex.findDocumentsByTermsOr(termArray);
+        return result;
       })
     );
 

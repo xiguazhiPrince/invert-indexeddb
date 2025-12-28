@@ -48,6 +48,8 @@ export interface SearchOptions {
   offset?: number;
   /** 是否高亮关键词 */
   highlight?: boolean;
+  /** 排序配置 */
+  sortBy?: SortField | SortField[];
 }
 
 /**
