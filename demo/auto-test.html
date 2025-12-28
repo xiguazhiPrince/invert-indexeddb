@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自动化测试页面</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header h1 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 2em;
+        }
+        .status-bar {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .status-badge.init {
+            background: #3498db;
+            color: white;
+        }
+        .status-badge.ready {
+            background: #27ae60;
+            color: white;
+        }
+        .status-badge.error {
+            background: #e74c3c;
+            color: white;
+        }
+        .stats {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            min-width: 150px;
+        }
+        .stat-card .label {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        .stat-card .value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section h2::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: #667eea;
+            border-radius: 2px;
+        }
+        .doc-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 20px;
+        }
+        .doc-item {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            background: #f9f9f9;
+        }
+        .doc-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        .doc-id {
+            font-weight: bold;
+            color: #667eea;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .doc-fields {
+            margin: 10px 0;
+        }
+        .doc-field {
+            margin-bottom: 12px;
+            padding: 8px;
+            background: white;
+            border-radius: 4px;
+            border-left: 3px solid #667eea;
+        }
+        .doc-field-label {
+            font-weight: 600;
+            color: #667eea;
+            font-size: 12px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+        .doc-field-value {
+            color: #555;
+            line-height: 1.5;
+            font-size: 14px;
+            word-break: break-word;
+        }
+        .doc-tokens {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #e0e0e0;
+        }
+        .doc-tokens-label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 5px;
+        }
+        .tokens-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .token-badge {
+            background: #667eea;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+        }
+        .index-overview {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+        }
+        .index-item {
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 12px;
+            background: #f9f9f9;
+        }
+        .index-term {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 8px;
+            font-family: monospace;
+        }
+        .index-docids {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .docid-badge {
+            background: #e8e8e8;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-family: monospace;
+        }
+        .test-results {
+            display: grid;
+            gap: 20px;
+        }
+        .test-case {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            background: #f9f9f9;
+            transition: all 0.3s;
+        }
+        .test-case.passed {
+            border-color: #27ae60;
+            background: #f0fdf4;
+        }
+        .test-case.failed {
+            border-color: #e74c3c;
+            background: #fef2f2;
+        }
+        .test-case.running {
+            border-color: #3498db;
+            background: #f0f9ff;
+        }
+        .test-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            cursor: pointer;
+        }
+        .test-header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+        .test-name {
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #333;
+        }
+        .test-toggle {
+            background: transparent;
+            border: none;
+            color: #667eea;
+            cursor: pointer;
+            padding: 4px 8px;
+            font-size: 12px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .test-toggle:hover {
+            background: rgba(102, 126, 234, 0.1);
+        }
+        .test-toggle::before {
+            content: '▼';
+            display: inline-block;
+            margin-right: 4px;
+            transition: transform 0.3s;
+            font-size: 10px;
+        }
+        .test-toggle.collapsed::before {
+            transform: rotate(-90deg);
+        }
+        .test-details {
+            margin-top: 15px;
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out;
+            max-height: 10000px;
+        }
+        .test-details.collapsed {
+            max-height: 0;
+            margin-top: 0;
+        }
+        .test-status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .test-status.passed {
+            background: #27ae60;
+            color: white;
+        }
+        .test-status.failed {
+            background: #e74c3c;
+            color: white;
+        }
+        .test-status.running {
+            background: #3498db;
+            color: white;
+        }
+        .test-details {
+            margin-top: 15px;
+        }
+        .detail-section {
+            margin-bottom: 15px;
+            padding: 12px;
+            background: white;
+            border-radius: 6px;
+            border-left: 3px solid #667eea;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .detail-content {
+            color: #555;
+            font-size: 14px;
+        }
+        .query-tokens {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 5px;
+        }
+        .query-token {
+            background: #764ba2;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+        }
+        .doc-list-display {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 5px;
+        }
+        .doc-id-display {
+            background: #e8e8e8;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+        }
+        .doc-id-display.expected {
+            background: #d4edda;
+            color: #155724;
+        }
+        .doc-id-display.actual {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .doc-id-display.missing {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .doc-id-display.unexpected {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .comparison-result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .comparison-result.match {
+            background: #d4edda;
+            color: #155724;
+        }
+        .comparison-result.mismatch {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+        }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .collapsible {
+            cursor: pointer;
+            user-select: none;
+        }
+        .collapsible::after {
+            content: ' ▼';
+            font-size: 12px;
+            opacity: 0.6;
+        }
+        .collapsible.collapsed::after {
+            content: ' ▶';
+        }
+        .collapsible-content {
+            max-height: 10000px;
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out;
+        }
+        .collapsible-content.collapsed {
+            max-height: 0;
+            overflow: hidden;
+        }
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .toggle-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .toggle-button:hover {
+            background: #5568d3;
+        }
+        .toggle-button::before {
+            content: '▼';
+            font-size: 10px;
+            transition: transform 0.3s;
+        }
+        .toggle-button.collapsed::before {
+            transform: rotate(-90deg);
+        }
+        .subsection {
+            margin-top: 30px;
+        }
+        .subsection-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .subsection-title {
+            font-size: 1.2em;
+            color: #667eea;
+            font-weight: 600;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>自动化测试页面</h1>
+            <div class="status-bar">
+                <div class="status-item">
+                    <span>状态:</span>
+                    <span id="initStatus" class="status-badge init">初始化中...</span>
+                </div>
+                <div class="status-item">
+                    <span>测试进度:</span>
+                    <span id="testProgress">0 / 0</span>
+                </div>
+            </div>
+            <div class="stats" id="statsContainer" style="display: none;">
+                <div class="stat-card">
+                    <div class="label">文档总数</div>
+                    <div class="value" id="docCount">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">索引词条数</div>
+                    <div class="value" id="termCount">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section" id="dataOverviewSection" style="display: none;">
+            <div class="section-header">
+                <h2>数据概览</h2>
+            </div>
+            
+            <div class="subsection">
+                <div class="subsection-header">
+                    <div class="subsection-title">文档列表</div>
+                    <button class="toggle-button" id="toggleDocList" onclick="toggleSection('docListContent', 'toggleDocList')">
+                        折叠
+                    </button>
+                </div>
+                <div class="collapsible-content" id="docListContent">
+                    <div class="doc-list" id="docList"></div>
+                </div>
+            </div>
+            
+            <div class="subsection">
+                <div class="subsection-header">
+                    <div class="subsection-title">倒排索引概览</div>
+                    <button class="toggle-button" id="toggleIndexOverview" onclick="toggleSection('indexOverviewContent', 'toggleIndexOverview')">
+                        折叠
+                    </button>
+                </div>
+                <div class="collapsible-content" id="indexOverviewContent">
+                    <div class="index-overview" id="indexOverview"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section" id="testResultsSection" style="display: none;">
+            <h2>测试结果</h2>
+            <div class="test-results" id="testResults"></div>
+        </div>
+
+        <div class="section" id="loadingSection">
+            <div class="loading">
+                <div class="spinner"></div>
+                <div>正在初始化数据库和测试数据...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../dist/invert-indexeddb.iife.js"></script>
+    <script src="test-data.js"></script>
+    <script>
+        const DB_NAME = 'autoTestDB';
+        const DB_NAME_PREFIX = 'invert_indexeddb_';
+        const STORE_NAMES = {
+            DOCUMENTS: 'documents',
+            INVERTED_INDEX: 'invertedIndex',
+            DOC_TERMS: 'docTerms',
+            DOC_FIELDS: 'docFields'
+        };
+
+        let searchDB = null;
+        let tokenizer = null;
+        let docIdMap = {}; // 映射：测试数据中的id -> 实际生成的docId
+
+        // 初始化数据库
+        async function initDatabase() {
+            try {
+                // 创建数据库实例
+                searchDB = new InvertedIndexDB.InvertedIndexDB(DB_NAME, {
+                    tokenizer: new InvertedIndexDB.MixedTokenizer()
+                });
+                tokenizer = new InvertedIndexDB.MixedTokenizer();
+                
+                await searchDB.init();
+                
+                // 清空旧数据
+                await searchDB.clear();
+                
+                // 添加测试文档并建立ID映射
+                docIdMap = {};
+                for (const doc of testDocuments) {
+                    const actualDocId = await searchDB.addDocument(doc, ['title', 'content', 'category', 'author']);
+                    // 使用文档的id字段（如果存在）或title作为映射键
+                    const key = doc.id || doc.title;
+                    if (key) {
+                        docIdMap[key] = actualDocId;
+                    }
+                }
+                
+                // 更新状态
+                document.getElementById('initStatus').textContent = '已就绪';
+                document.getElementById('initStatus').className = 'status-badge ready';
+                
+                // 显示统计信息
+                await updateStats();
+                
+                // 显示数据概览
+                await displayDataOverview();
+                
+                // 隐藏加载提示，显示内容
+                document.getElementById('loadingSection').style.display = 'none';
+                document.getElementById('dataOverviewSection').style.display = 'block';
+                document.getElementById('testResultsSection').style.display = 'block';
+                
+                // 运行测试
+                await runTests();
+                
+            } catch (error) {
+                console.error('初始化失败:', error);
+                document.getElementById('initStatus').textContent = '初始化失败';
+                document.getElementById('initStatus').className = 'status-badge error';
+                document.getElementById('loadingSection').innerHTML = 
+                    `<div style="color: #e74c3c; padding: 20px;">初始化失败: ${error.message}</div>`;
+            }
+        }
+
+        // 更新统计信息
+        async function updateStats() {
+            try {
+                const stats = await searchDB.getStats();
+                document.getElementById('docCount').textContent = stats.documentCount;
+                document.getElementById('termCount').textContent = stats.termCount;
+                document.getElementById('statsContainer').style.display = 'flex';
+            } catch (error) {
+                console.error('获取统计信息失败:', error);
+            }
+        }
+
+        // 显示数据概览
+        async function displayDataOverview() {
+            try {
+                // 获取所有文档
+                const allDocs = await getAllDocuments();
+                
+                // 显示文档列表
+                const docListHtml = [];
+                for (const [docId, doc] of allDocs.entries()) {
+                    // 获取文档的所有字段（排除系统字段）
+                    const systemFields = ['docId', 'createdAt', 'updatedAt'];
+                    const allFields = Object.keys(doc).filter(key => !systemFields.includes(key));
+                    
+                    // 获取文档的分词结果（使用所有字符串字段）
+                    const indexFields = allFields.filter(field => typeof doc[field] === 'string' && doc[field]);
+                    const texts = indexFields.map(field => doc[field] || '').filter(t => t).join(' ');
+                    const tokens = tokenizer.tokenize(texts);
+                    const uniqueTerms = [...new Set(tokens.map(t => t.term))];
+                    
+                    // 生成所有字段的HTML
+                    const fieldsHtml = allFields.map(field => {
+                        const value = doc[field];
+                        let displayHtml = '';
+                        
+                        if (value === null || value === undefined) {
+                            displayHtml = '<em style="color: #999;">null</em>';
+                        } else if (typeof value === 'object') {
+                            displayHtml = `<pre style="margin: 0; padding: 0; background: transparent; font-size: 12px;">${escapeHtml(JSON.stringify(value, null, 2))}</pre>`;
+                        } else {
+                            displayHtml = escapeHtml(String(value));
+                        }
+                        
+                        return `
+                            <div class="doc-field">
+                                <div class="doc-field-label">${field}</div>
+                                <div class="doc-field-value">${displayHtml}</div>
+                            </div>
+                        `;
+                    }).join('');
+                    
+                    docListHtml.push(`
+                        <div class="doc-item">
+                            <div class="doc-item-header">
+                                <span class="doc-id">${docId}</span>
+                            </div>
+                            <div class="doc-fields">
+                                ${fieldsHtml}
+                            </div>
+                            <div class="doc-tokens">
+                                <div class="doc-tokens-label">分词结果:</div>
+                                <div class="tokens-list">
+                                    ${uniqueTerms.map(term => `<span class="token-badge">${term}</span>`).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `);
+                }
+                document.getElementById('docList').innerHTML = docListHtml.join('');
+                
+                // 显示倒排索引概览
+                const indexOverview = await getIndexOverview();
+                const indexHtml = [];
+                for (const [term, docIds] of Object.entries(indexOverview)) {
+                    indexHtml.push(`
+                        <div class="index-item">
+                            <div class="index-term">${term}</div>
+                            <div class="index-docids">
+                                ${docIds.map(id => `<span class="docid-badge">${id}</span>`).join('')}
+                            </div>
+                        </div>
+                    `);
+                }
+                document.getElementById('indexOverview').innerHTML = indexHtml.join('');
+                
+            } catch (error) {
+                console.error('显示数据概览失败:', error);
+            }
+        }
+
+        // 获取所有文档
+        async function getAllDocuments() {
+            return new Promise((resolve, reject) => {
+                const dbName = DB_NAME_PREFIX + DB_NAME;
+                const request = indexedDB.open(dbName, 1);
+                
+                request.onsuccess = () => {
+                    const db = request.result;
+                    const transaction = db.transaction([STORE_NAMES.DOCUMENTS], 'readonly');
+                    const store = transaction.objectStore(STORE_NAMES.DOCUMENTS);
+                    const getAllRequest = store.getAll();
+                    
+                    getAllRequest.onsuccess = () => {
+                        const docs = new Map();
+                        if (getAllRequest.result) {
+                            for (const doc of getAllRequest.result) {
+                                if (doc.docId) {
+                                    docs.set(doc.docId, doc);
+                                }
+                            }
+                        }
+                        resolve(docs);
+                    };
+                    
+                    getAllRequest.onerror = () => reject(getAllRequest.error);
+                };
+                
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // 获取倒排索引概览
+        async function getIndexOverview() {
+            return new Promise((resolve, reject) => {
+                const dbName = DB_NAME_PREFIX + DB_NAME;
+                const request = indexedDB.open(dbName, 1);
+                
+                request.onsuccess = () => {
+                    const db = request.result;
+                    const transaction = db.transaction([STORE_NAMES.INVERTED_INDEX], 'readonly');
+                    const store = transaction.objectStore(STORE_NAMES.INVERTED_INDEX);
+                    const getAllRequest = store.getAll();
+                    
+                    getAllRequest.onsuccess = () => {
+                        const overview = {};
+                        if (getAllRequest.result) {
+                            for (const item of getAllRequest.result) {
+                                overview[item.term] = Array.isArray(item.docIds) ? item.docIds : [];
+                            }
+                        }
+                        resolve(overview);
+                    };
+                    
+                    getAllRequest.onerror = () => reject(getAllRequest.error);
+                };
+                
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // 运行测试
+        async function runTests() {
+            const testResultsContainer = document.getElementById('testResults');
+            testResultsContainer.innerHTML = '';
+            
+            // 创建测试用例元素
+            const testElements = testCases.map((testCase, index) => {
+                const testDiv = document.createElement('div');
+                testDiv.className = 'test-case running';
+                testDiv.id = `test-${index}`;
+                
+                // 转换期望的文档ID
+                const expectedActualDocIds = testCase.expectedDocIds.map(testId => docIdMap[testId] || testId);
+                
+                testDiv.innerHTML = `
+                    <div class="test-header" onclick="toggleTestDetails(${index})">
+                        <div class="test-header-left">
+                            <button class="test-toggle" id="test-toggle-${index}" onclick="event.stopPropagation(); toggleTestDetails(${index})">详情</button>
+                            <div class="test-name">${testCase.name}</div>
+                        </div>
+                        <div class="test-status running">运行中...</div>
+                    </div>
+                    <div class="test-details" id="test-details-${index}">
+                        <div class="detail-section">
+                            <div class="detail-label">输入关键词:</div>
+                            <div class="detail-content">${testCase.query}</div>
+                        </div>
+                        <div class="detail-section">
+                            <div class="detail-label">查询条件:</div>
+                            <div class="detail-content">
+                                <pre>${JSON.stringify(testCase.options, null, 2)}</pre>
+                            </div>
+                        </div>
+                        <div class="detail-section">
+                            <div class="detail-label">期望的文档ID:</div>
+                            <div class="detail-content">
+                                <div class="doc-list-display">
+                                    ${expectedActualDocIds.map(id => `<span class="doc-id-display expected">${id}</span>`).join('')}
+                                    ${expectedActualDocIds.length === 0 ? '<span style="color: #999;">无</span>' : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="detail-section">
+                            <div class="detail-label">实际查询结果:</div>
+                            <div class="detail-content" id="actual-${index}">等待中...</div>
+                        </div>
+                    </div>
+                `;
+                return testDiv;
+            });
+            
+            testResultsContainer.append(...testElements);
+            
+            // 更新进度
+            document.getElementById('testProgress').textContent = `0 / ${testCases.length}`;
+            
+            // 执行每个测试
+            for (let i = 0; i < testCases.length; i++) {
+                const testCase = testCases[i];
+                const testElement = document.getElementById(`test-${i}`);
+                const actualElement = document.getElementById(`actual-${i}`);
+                
+                try {
+                    // 将测试用例中的期望ID转换为实际生成的ID
+                    const expectedActualDocIds = testCase.expectedDocIds.map(testId => docIdMap[testId] || testId);
+                    
+                    // 执行搜索
+                    const result = await searchDB.search(testCase.query, testCase.options);
+                    const actualDocIds = result.docIds;
+                    
+                    // 获取关键词的分词结果
+                    const queryTokens = tokenizer.tokenize(testCase.query);
+                    const queryTerms = [...new Set(queryTokens.map(t => t.term))];
+                    
+                    // 更新实际结果
+                    actualElement.innerHTML = `
+                        <div style="margin-bottom: 10px;">
+                            <strong>关键词分词结果:</strong>
+                            <div class="query-tokens">
+                                ${queryTerms.map(term => `<span class="query-token">${term}</span>`).join('')}
+                            </div>
+                        </div>
+                        <div>
+                            <strong>文档ID列表:</strong>
+                            <div class="doc-list-display">
+                                ${actualDocIds.map(id => `<span class="doc-id-display actual">${id}</span>`).join('')}
+                                ${actualDocIds.length === 0 ? '<span style="color: #999;">无</span>' : ''}
+                            </div>
+                        </div>
+                    `;
+                    
+                    // 对比结果（使用实际生成的ID）
+                    const expectedSet = new Set(expectedActualDocIds);
+                    const actualSet = new Set(actualDocIds);
+                    const isMatch = expectedSet.size === actualSet.size && 
+                                   [...expectedSet].every(id => actualSet.has(id));
+                    
+                    // 检查顺序是否匹配（对于限制结果数量测试）
+                    let orderMatch = true;
+                    if (testCase.name === '限制结果数量') {
+                        orderMatch = expectedActualDocIds.length === actualDocIds.length &&
+                                    expectedActualDocIds.every((id, idx) => id === actualDocIds[idx]);
+                    }
+                    
+                    // 找出差异
+                    const missing = [...expectedSet].filter(id => !actualSet.has(id));
+                    const unexpected = [...actualSet].filter(id => !expectedSet.has(id));
+                    
+                    // 添加对比结果
+                    const comparisonHtml = `
+                        <div class="detail-section">
+                            <div class="detail-label">对比结果:</div>
+                            <div class="detail-content">
+                                <div class="comparison-result ${isMatch ? 'match' : 'mismatch'}">
+                                    ${isMatch ? '✓ 测试通过' : '✗ 测试失败'}
+                                </div>
+                                ${missing.length > 0 ? `
+                                    <div style="margin-top: 10px;">
+                                        <strong>缺失的文档:</strong>
+                                        <div class="doc-list-display">
+                                            ${missing.map(id => `<span class="doc-id-display missing">${id}</span>`).join('')}
+                                        </div>
+                                    </div>
+                                ` : ''}
+                                ${unexpected.length > 0 ? `
+                                    <div style="margin-top: 10px;">
+                                        <strong>意外的文档:</strong>
+                                        <div class="doc-list-display">
+                                            ${unexpected.map(id => `<span class="doc-id-display unexpected">${id}</span>`).join('')}
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `;
+                    
+                    actualElement.insertAdjacentHTML('afterend', comparisonHtml);
+                    
+                    // 更新测试状态
+                    // 对于限制结果数量测试，需要检查顺序
+                    const finalMatch = testCase.name === '限制结果数量' ? (isMatch && orderMatch) : isMatch;
+                    if (finalMatch) {
+                        testElement.className = 'test-case passed';
+                        testElement.querySelector('.test-status').textContent = '通过';
+                        testElement.querySelector('.test-status').className = 'test-status passed';
+                    } else {
+                        testElement.className = 'test-case failed';
+                        testElement.querySelector('.test-status').textContent = '失败';
+                        testElement.querySelector('.test-status').className = 'test-status failed';
+                    }
+                    
+                } catch (error) {
+                    actualElement.innerHTML = `<div style="color: #e74c3c;">错误: ${error.message}</div>`;
+                    testElement.className = 'test-case failed';
+                    testElement.querySelector('.test-status').textContent = '错误';
+                    testElement.querySelector('.test-status').className = 'test-status failed';
+                }
+                
+                // 更新进度
+                document.getElementById('testProgress').textContent = `${i + 1} / ${testCases.length}`;
+            }
+        }
+
+        // HTML转义函数
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 切换折叠/展开
+        function toggleSection(contentId, buttonId) {
+            const content = document.getElementById(contentId);
+            const button = document.getElementById(buttonId);
+            
+            if (content.classList.contains('collapsed')) {
+                content.classList.remove('collapsed');
+                button.classList.remove('collapsed');
+                button.textContent = '折叠';
+            } else {
+                content.classList.add('collapsed');
+                button.classList.add('collapsed');
+                button.textContent = '展开';
+            }
+        }
+
+        // 切换测试用例详情
+        function toggleTestDetails(index) {
+            const details = document.getElementById(`test-details-${index}`);
+            const toggle = document.getElementById(`test-toggle-${index}`);
+            
+            if (details.classList.contains('collapsed')) {
+                details.classList.remove('collapsed');
+                toggle.classList.remove('collapsed');
+            } else {
+                details.classList.add('collapsed');
+                toggle.classList.add('collapsed');
+            }
+        }
+
+        // 页面加载时自动初始化
+        window.addEventListener('load', () => {
+            initDatabase();
+        });
+    </script>
+</body>
+</html>
+
