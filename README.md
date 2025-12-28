@@ -19,6 +19,10 @@
 ```bash
 npm install invert-indexeddb
 ```
+或者
+```bash
+pnpm install invert-indexeddb
+```
 
 ## 快速开始
 
