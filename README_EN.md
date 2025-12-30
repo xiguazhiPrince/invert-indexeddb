@@ -20,6 +20,10 @@ A full-text search SDK for IndexedDB based on inverted index algorithm, supporti
 npm install invert-indexeddb
 ```
 
+or
+```bash
+pnpm install invert-indexeddb
+
 ## Quick Start
 
 ### Basic Usage
