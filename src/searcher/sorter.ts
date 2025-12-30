@@ -20,7 +20,7 @@ export class Sorter {
   /**
    * 对文档ID数组进行排序
    */
-  async sort(docIds: string[], sortBy: SortField | SortField[]): Promise<string[]> {
+  async sort(docIds: number[], sortBy: SortField | SortField[]): Promise<number[]> {
     if (!sortBy || docIds.length === 0) {
       return docIds;
     }
@@ -50,8 +50,8 @@ export class Sorter {
   /**
    * 获取文档字段值
    */
-  private async getDocFields(docIds: string[]): Promise<Map<string, Record<string, any>>> {
-    const result = new Map<string, Record<string, any>>();
+  private async getDocFields(docIds: number[]): Promise<Map<number, Record<string, any>>> {
+    const result = new Map<number, Record<string, any>>();
 
     // 先从 docFields store 获取
     const docFieldsPromises = docIds.map(async (docId) => {
@@ -78,15 +78,15 @@ export class Sorter {
   /**
    * 从 docFields store 获取字段
    */
-  private async getDocFieldsFromStore(docId: string): Promise<Record<string, any> | null> {
+  private async getDocFieldsFromStore(docId: number): Promise<Record<string, any> | null> {
     return await this.docFieldsStore.get(docId);
   }
 
   /**
    * 获取完整文档
    */
-  private async getFullDocuments(docIds: string[]): Promise<Map<string, Record<string, any>>> {
-    const result = new Map<string, Record<string, any>>();
+  private async getFullDocuments(docIds: number[]): Promise<Map<number, Record<string, any>>> {
+    const result = new Map<number, Record<string, any>>();
 
     const promises = docIds.map(async (docId) => {
       const doc = await this.getDocument(docId);
@@ -102,7 +102,7 @@ export class Sorter {
   /**
    * 获取单个文档
    */
-  private async getDocument(docId: string): Promise<any> {
+  private async getDocument(docId: number): Promise<any> {
     return await this.documentsStore.get(docId);
   }
 
@@ -110,8 +110,8 @@ export class Sorter {
    * 获取字段值
    */
   private getFieldValue(
-    docFields: Map<string, Record<string, any>>,
-    docId: string,
+    docFields: Map<number, Record<string, any>>,
+    docId: number,
     fieldPath: string
   ): any {
     const doc = docFields.get(docId);

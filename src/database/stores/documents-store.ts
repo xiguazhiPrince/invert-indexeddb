@@ -10,7 +10,7 @@ export class DocumentsStore {
   /**
    * 获取文档
    */
-  async get<T = any>(docId: string): Promise<T | null> {
+  async get<T = any>(docId: number): Promise<T | null> {
     return new Promise((resolve, reject) => {
       const store = this.db.getStore(STORE_NAMES.DOCUMENTS);
       const request = store.get(docId);
@@ -45,7 +45,7 @@ export class DocumentsStore {
   /**
    * 删除文档
    */
-  async delete(docId: string): Promise<void> {
+  async delete(docId: number): Promise<void> {
     return new Promise((resolve, reject) => {
       const store = this.db.getStore(STORE_NAMES.DOCUMENTS, 'readwrite');
       const request = store.delete(docId);
@@ -61,13 +61,13 @@ export class DocumentsStore {
   /**
    * 获取所有文档
    */
-  async getAll<T = any>(): Promise<Map<string, T>> {
+  async getAll<T = any>(): Promise<Map<number, T>> {
     return new Promise((resolve, reject) => {
       const store = this.db.getStore(STORE_NAMES.DOCUMENTS);
       const request = store.getAll();
 
       request.onsuccess = () => {
-        const docs = new Map<string, T>();
+        const docs = new Map<number, T>();
         if (request.result) {
           for (const doc of request.result) {
             if ((doc as any).docId) {

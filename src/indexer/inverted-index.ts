@@ -22,7 +22,7 @@ export class InvertedIndex {
   /**
    * 为文档建立索引
    */
-  async indexDocument(docId: string, text: string): Promise<void> {
+  async indexDocument(docId: number, text: string): Promise<void> {
     const tokens = this.tokenizer.tokenize(text);
     const terms = new Set(tokens.map((t) => t.term));
 
@@ -41,7 +41,7 @@ export class InvertedIndex {
    * 为多个字段建立索引
    */
   async indexDocumentFields(
-    docId: string,
+    docId: number,
     fields: Record<string, any>,
     indexFields?: string[]
   ): Promise<void> {
@@ -66,7 +66,7 @@ export class InvertedIndex {
   /**
    * 添加词到倒排索引
    */
-  private async addTermToIndex(term: string, docId: string): Promise<void> {
+  private async addTermToIndex(term: string, docId: number): Promise<void> {
     const existingItem = await this.invertedIndexStore.get(term);
 
     if (existingItem) {
@@ -90,7 +90,7 @@ export class InvertedIndex {
   /**
    * 保存文档-词关系
    */
-  private async saveDocTerm(docId: string, term: string): Promise<void> {
+  private async saveDocTerm(docId: number, term: string): Promise<void> {
     const docTerm: DocTerm = { docId, term };
     await this.docTermsStore.put(docTerm);
   }
@@ -98,18 +98,18 @@ export class InvertedIndex {
   /**
    * 从倒排索引中查找文档ID
    */
-  async findDocumentsByTerm(term: string): Promise<Set<string>> {
+  async findDocumentsByTerm(term: string): Promise<Set<number>> {
     const item = await this.invertedIndexStore.get(term);
     if (item) {
       return item.docIds;
     }
-    return new Set<string>();
+    return new Set<number>();
   }
 
   /**
    * 从多个词查找文档ID（AND 操作）
    */
-  async findDocumentsByTermsAnd(terms: string[]): Promise<Set<string>> {
+  async findDocumentsByTermsAnd(terms: string[]): Promise<Set<number>> {
     if (terms.length === 0) {
       return new Set();
     }
@@ -118,7 +118,7 @@ export class InvertedIndex {
 
     // 求交集
     if (docIdSets.length === 0) {
-      return new Set<string>();
+      return new Set<number>();
     }
 
     let result = docIdSets[0];
@@ -132,7 +132,7 @@ export class InvertedIndex {
   /**
    * 从多个词查找文档ID（OR 操作）
    */
-  async findDocumentsByTermsOr(terms: string[]): Promise<Set<string>> {
+  async findDocumentsByTermsOr(terms: string[]): Promise<Set<number>> {
     if (terms.length === 0) {
       return new Set();
     }
@@ -140,7 +140,7 @@ export class InvertedIndex {
     const docIdSets = await Promise.all(terms.map((term) => this.findDocumentsByTerm(term)));
 
     // 求并集
-    const result = new Set<string>();
+    const result = new Set<number>();
     for (const docIdSet of docIdSets) {
       for (const docId of docIdSet) {
         result.add(docId);
@@ -153,7 +153,7 @@ export class InvertedIndex {
   /**
    * 删除文档的所有索引
    */
-  async removeDocumentIndex(docId: string): Promise<void> {
+  async removeDocumentIndex(docId: number): Promise<void> {
     // 获取文档的所有词
     const terms = await this.getDocumentTerms(docId);
 
@@ -169,7 +169,7 @@ export class InvertedIndex {
   /**
    * 获取文档的所有词
    */
-  private async getDocumentTerms(docId: string): Promise<Set<string>> {
+  private async getDocumentTerms(docId: number): Promise<Set<string>> {
     const docTerms = await this.docTermsStore.getByDocId(docId);
     const terms = new Set<string>();
     for (const docTerm of docTerms) {
@@ -181,7 +181,7 @@ export class InvertedIndex {
   /**
    * 从倒排索引中移除词
    */
-  private async removeTermFromIndex(term: string, docId: string): Promise<void> {
+  private async removeTermFromIndex(term: string, docId: number): Promise<void> {
     const item = await this.invertedIndexStore.get(term);
 
     if (item && item.docIds.has(docId)) {
@@ -201,7 +201,7 @@ export class InvertedIndex {
   /**
    * 删除文档的所有词关系
    */
-  private async removeDocTerms(docId: string): Promise<void> {
+  private async removeDocTerms(docId: number): Promise<void> {
     await this.docTermsStore.deleteByDocId(docId);
   }
 

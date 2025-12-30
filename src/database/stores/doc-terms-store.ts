@@ -27,7 +27,7 @@ export class DocTermsStore {
   /**
    * 根据文档ID获取所有词
    */
-  async getByDocId(docId: string): Promise<DocTerm[]> {
+  async getByDocId(docId: number): Promise<DocTerm[]> {
     return new Promise((resolve, reject) => {
       const store = this.db.getStore(STORE_NAMES.DOC_TERMS);
       const index = store.index(INDEX_NAMES.DOC_ID);
@@ -47,7 +47,7 @@ export class DocTermsStore {
   /**
    * 删除文档的所有词关系
    */
-  async deleteByDocId(docId: string): Promise<void> {
+  async deleteByDocId(docId: number): Promise<void> {
     return new Promise((resolve, reject) => {
       const store = this.db.getStore(STORE_NAMES.DOC_TERMS, 'readwrite');
       const index = store.index(INDEX_NAMES.DOC_ID);

@@ -3,10 +3,10 @@
  */
 
 /**
- * 生成唯一ID
+ * 生成唯一ID（毫秒级时间戳）
  */
-export function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+export function generateId(): number {
+  return Date.now();
 }
 
 /**

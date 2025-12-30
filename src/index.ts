@@ -73,7 +73,7 @@ export class InvertedIndexDB {
   /**
    * 添加文档
    */
-  async addDocument<T = any>(doc: T, indexFields?: string[]): Promise<string> {
+  async addDocument<T = any>(doc: T, indexFields?: string[]): Promise<number> {
     this.ensureInitialized();
 
     const docId = generateId();
@@ -96,7 +96,7 @@ export class InvertedIndexDB {
   /**
    * 更新文档
    */
-  async updateDocument<T = any>(docId: string, doc: T, indexFields?: string[]): Promise<void> {
+  async updateDocument<T = any>(docId: number, doc: T, indexFields?: string[]): Promise<void> {
     this.ensureInitialized();
 
     // 删除旧索引
@@ -120,7 +120,7 @@ export class InvertedIndexDB {
   /**
    * 删除文档
    */
-  async deleteDocument(docId: string): Promise<void> {
+  async deleteDocument(docId: number): Promise<void> {
     this.ensureInitialized();
 
     // 删除索引
@@ -138,7 +138,7 @@ export class InvertedIndexDB {
   /**
    * 获取文档
    */
-  async getDocument<T = any>(docId: string): Promise<T | null> {
+  async getDocument<T = any>(docId: number): Promise<T | null> {
     this.ensureInitialized();
 
     if (!this.documentsStore) {
@@ -151,10 +151,10 @@ export class InvertedIndexDB {
   /**
    * 批量添加文档
    */
-  async batchAddDocuments<T = any>(docs: T[], indexFields?: string[]): Promise<string[]> {
+  async batchAddDocuments<T = any>(docs: T[], indexFields?: string[]): Promise<number[]> {
     this.ensureInitialized();
 
-    const docIds: string[] = [];
+    const docIds: number[] = [];
 
     for (const doc of docs) {
       const docId = await this.addDocument(doc, indexFields);
@@ -233,7 +233,7 @@ export class InvertedIndexDB {
   /**
    * 保存文档
    */
-  private async saveDocument(docId: string, doc: any): Promise<void> {
+  private async saveDocument(docId: number, doc: any): Promise<void> {
     if (!this.documentsStore) {
       throw new Error('DocumentsStore not initialized');
     }
@@ -244,7 +244,7 @@ export class InvertedIndexDB {
   /**
    * 删除文档
    */
-  private async deleteDocumentFromStore(docId: string): Promise<void> {
+  private async deleteDocumentFromStore(docId: number): Promise<void> {
     if (!this.documentsStore) {
       throw new Error('DocumentsStore not initialized');
     }
@@ -255,7 +255,7 @@ export class InvertedIndexDB {
   /**
    * 删除文档字段索引
    */
-  private async deleteDocFields(docId: string): Promise<void> {
+  private async deleteDocFields(docId: number): Promise<void> {
     if (!this.docFieldsStore) {
       throw new Error('DocFieldsStore not initialized');
     }
@@ -266,7 +266,7 @@ export class InvertedIndexDB {
   /**
    * 建立文档索引
    */
-  private async indexDocument(docId: string, doc: any, indexFields?: string[]): Promise<void> {
+  private async indexDocument(docId: number, doc: any, indexFields?: string[]): Promise<void> {
     if (!this.invertedIndex) {
       return;
     }
@@ -311,7 +311,7 @@ export class InvertedIndexDB {
   /**
    * 保存文档字段索引
    */
-  private async saveDocFields(docId: string, doc: any, fields: string[]): Promise<void> {
+  private async saveDocFields(docId: number, doc: any, fields: string[]): Promise<void> {
     if (!this.docFieldsStore) {
       throw new Error('DocFieldsStore not initialized');
     }
@@ -349,7 +349,7 @@ export class InvertedIndexDB {
   /**
    * 获取所有文档
    */
-  private async getAllDocuments(): Promise<Map<string, any>> {
+  private async getAllDocuments(): Promise<Map<number, any>> {
     if (!this.documentsStore) {
       throw new Error('DocumentsStore not initialized');
     }

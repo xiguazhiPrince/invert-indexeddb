@@ -10,7 +10,7 @@ export class DocFieldsStore {
   /**
    * 获取文档字段
    */
-  async get(docId: string): Promise<Record<string, any> | null> {
+  async get(docId: number): Promise<Record<string, any> | null> {
     return new Promise((resolve, reject) => {
       const store = this.db.getStore(STORE_NAMES.DOC_FIELDS);
       const request = store.get(docId);
@@ -33,7 +33,7 @@ export class DocFieldsStore {
   /**
    * 保存文档字段
    */
-  async put(docId: string, fields: Record<string, any>): Promise<void> {
+  async put(docId: number, fields: Record<string, any>): Promise<void> {
     return new Promise((resolve, reject) => {
       const store = this.db.getStore(STORE_NAMES.DOC_FIELDS, 'readwrite');
       const request = store.put({
@@ -52,7 +52,7 @@ export class DocFieldsStore {
   /**
    * 删除文档字段
    */
-  async delete(docId: string): Promise<void> {
+  async delete(docId: number): Promise<void> {
     return new Promise((resolve, reject) => {
       const store = this.db.getStore(STORE_NAMES.DOC_FIELDS, 'readwrite');
       const request = store.delete(docId);

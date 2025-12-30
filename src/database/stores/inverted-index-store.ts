@@ -21,8 +21,8 @@ export class InvertedIndexStore {
           const item = request.result;
           // 从数组恢复 Set
           const docIds = Array.isArray(item.docIds)
-            ? new Set<string>(item.docIds as string[])
-            : new Set<string>();
+            ? new Set<number>(item.docIds as number[])
+            : new Set<number>();
           resolve({
             term: item.term,
             docIds,

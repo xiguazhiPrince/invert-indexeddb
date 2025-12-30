@@ -77,7 +77,7 @@ export interface SortField {
  */
 export interface SearchResultItem<T = any> {
   /** 文档ID */
-  docId: string;
+  docId: number;
   /** 完整文档 */
   doc: T;
   /** 匹配位置信息（用于高亮） */
@@ -105,7 +105,7 @@ export interface MatchInfo {
  */
 export interface SearchResult<T = any> {
   /** 匹配的文档ID列表 */
-  docIds: string[];
+  docIds: number[];
   /** 搜索结果项 */
   items: SearchResultItem<T>[];
   /** 总匹配数 */
@@ -117,11 +117,11 @@ export interface SearchResult<T = any> {
  */
 export interface SearchIdsResult {
   /** 匹配的文档ID列表 */
-  docIds: string[];
+  docIds: number[];
   /** 轻量级结果项 */
   items: Array<{
     /** 文档ID */
-    docId: string;
+    docId: number;
     /** 指定字段的值 */
     fields: Record<string, any>;
   }>;
@@ -148,7 +148,7 @@ export interface InvertedIndexItem {
   /** 词 */
   term: string;
   /** 包含该词的文档ID集合 */
-  docIds: Set<string>;
+  docIds: Set<number>;
   /** 文档数量 */
   count: number;
 }
@@ -158,7 +158,7 @@ export interface InvertedIndexItem {
  */
 export interface DocTerm {
   /** 文档ID */
-  docId: string;
+  docId: number;
   /** 词 */
   term: string;
 }
@@ -168,7 +168,7 @@ export interface DocTerm {
  */
 export interface DocFields {
   /** 文档ID */
-  docId: string;
+  docId: number;
   /** 字段值 */
   fields: Record<string, any>;
 }

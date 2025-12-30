@@ -21,7 +21,8 @@ npm install invert-indexeddb
 ```
 
 or
-```bash
+
+````bash
 pnpm install invert-indexeddb
 
 ## Quick Start
@@ -48,7 +49,7 @@ const docId = await search.addDocument(
 // Search
 const results = await search.search('example');
 console.log(results.items); // Search results
-```
+````
 
 ### Lightweight Search (for sorting)
 

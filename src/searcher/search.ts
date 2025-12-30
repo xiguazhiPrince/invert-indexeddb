@@ -44,7 +44,7 @@ export class Searcher {
     }
 
     // 查找文档ID
-    let docIds: Set<string>;
+    let docIds: Set<number>;
 
     if (isPhrase) {
       // 短语搜索：需要精确匹配整个短语
@@ -68,8 +68,8 @@ export class Searcher {
       // 使用 Sorter 进行自定义排序
       docIdsArray = await this.sorter.sort(docIdsArray, sortBy);
     } else {
-      // 默认排序：按 docId 排序（docId 前缀包含时间戳，按字符串排序即可得到时间顺序）
-      docIdsArray.sort((a, b) => a.localeCompare(b));
+      // 默认排序：按 docId 排序（docId 是毫秒级时间戳，按数字排序即可得到时间顺序）
+      docIdsArray.sort((a, b) => a - b);
     }
 
     const total = docIdsArray.length;
@@ -95,7 +95,7 @@ export class Searcher {
   /**
    * 短语搜索
    */
-  private async searchPhrase(phrase: string): Promise<Set<string>> {
+  private async searchPhrase(phrase: string): Promise<Set<number>> {
     // 短语搜索：查找包含完整短语的文档
     // 1. 先将短语分词，找到包含所有词的文档（AND操作）
     // 2. 然后检查这些文档的原始内容中是否包含完整的短语
@@ -121,7 +121,7 @@ export class Searcher {
     }
 
     // 检查这些文档的原始内容中是否包含完整的短语
-    const matchingDocIds = new Set<string>();
+    const matchingDocIds = new Set<number>();
 
     for (const docId of candidateDocIds) {
       const doc = await this.getDocument(docId);
@@ -152,7 +152,7 @@ export class Searcher {
   /**
    * 模糊搜索
    */
-  private async searchFuzzy(terms: string[], operator: 'AND' | 'OR'): Promise<Set<string>> {
+  private async searchFuzzy(terms: string[], operator: 'AND' | 'OR'): Promise<Set<number>> {
     // 获取所有索引词
     const allTerms = await this.invertedIndex.getAllTerms();
 
@@ -187,7 +187,7 @@ export class Searcher {
       return result;
     } else {
       // 求并集
-      const result = new Set<string>();
+      const result = new Set<number>();
       for (const docIdSet of docIdSets) {
         for (const docId of docIdSet) {
           result.add(docId);
@@ -201,7 +201,7 @@ export class Searcher {
    * 获取搜索结果项
    */
   private async getSearchResultItems<T>(
-    docIds: string[],
+    docIds: number[],
     query: string,
     options: SearchOptions
   ): Promise<SearchResultItem<T>[]> {
@@ -260,7 +260,7 @@ export class Searcher {
   /**
    * 获取文档
    */
-  private async getDocument<T>(docId: string): Promise<T | null> {
+  private async getDocument<T>(docId: number): Promise<T | null> {
     return await this.documentsStore.get<T>(docId);
   }
 }

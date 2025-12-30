@@ -69,15 +69,15 @@ export class SearchIds {
    * 获取文档的指定字段
    */
   private async getFieldsForDocs(
-    docIds: string[],
+    docIds: number[],
     fields: string[]
-  ): Promise<Array<{ docId: string; fields: Record<string, any> }>> {
+  ): Promise<Array<{ docId: number; fields: Record<string, any> }>> {
     if (fields.length === 0) {
       // 如果没有指定字段，只返回ID
       return docIds.map((docId) => ({ docId, fields: {} }));
     }
 
-    const items: Array<{ docId: string; fields: Record<string, any> }> = [];
+    const items: Array<{ docId: number; fields: Record<string, any> }> = [];
 
     for (const docId of docIds) {
       const docFields = await this.getDocFields(docId, fields);
@@ -93,7 +93,7 @@ export class SearchIds {
   /**
    * 获取文档的指定字段值
    */
-  private async getDocFields(docId: string, fieldNames: string[]): Promise<Record<string, any>> {
+  private async getDocFields(docId: number, fieldNames: string[]): Promise<Record<string, any>> {
     // 先从 docFields store 获取
     const docFields = await this.getDocFieldsFromStore(docId);
     if (docFields) {
@@ -112,14 +112,14 @@ export class SearchIds {
   /**
    * 从 docFields store 获取
    */
-  private async getDocFieldsFromStore(docId: string): Promise<Record<string, any> | null> {
+  private async getDocFieldsFromStore(docId: number): Promise<Record<string, any> | null> {
     return await this.docFieldsStore.get(docId);
   }
 
   /**
    * 获取完整文档
    */
-  private async getFullDocument(docId: string): Promise<any> {
+  private async getFullDocument(docId: number): Promise<any> {
     return await this.documentsStore.get(docId);
   }
 
