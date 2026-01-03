@@ -453,20 +453,8 @@ export class InvertedIndexDB {
   }
 }
 
-// 导出类型和接口
-export type {
-  BaseDocument,
-  ITokenizer,
-  Token,
-  InitOptions,
-  CustomIndexConfig,
-  SearchOptions,
-  SearchResult,
-  SearchIdsOptions,
-  SearchIdsResult,
-  Stats,
-  RebuildIndexProgress,
-} from './types';
+// 导出类型和接口（自动导出所有类型，避免遗漏）
+export type * from './types';
 
 export { DefaultTokenizer, MixedTokenizer } from './indexer/tokenizer';
 export { Highlighter } from './utils/highlight';
