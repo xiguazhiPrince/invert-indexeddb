@@ -8,7 +8,6 @@ export const STORE_NAMES = {
   DOCUMENTS: 'documents',
   INVERTED_INDEX: 'invertedIndex',
   DOC_TERMS: 'docTerms',
-  DOC_FIELDS: 'docFields',
 } as const;
 
 export const INDEX_NAMES = {

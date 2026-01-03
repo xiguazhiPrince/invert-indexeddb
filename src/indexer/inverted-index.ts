@@ -1,22 +1,20 @@
 import { IndexedDBWrapper } from '../database/db';
 import { InvertedIndexStore } from '../database/stores/inverted-index-store';
-import { DocTermsStore } from '../database/stores/doc-terms-store';
-import { ITokenizer, InvertedIndexItem, DocTerm } from '../types';
+import { DocumentsStore } from '../database/stores/documents-store';
+import { ITokenizer, InvertedIndexItem } from '../types';
 
 /**
  * 倒排索引管理器
  */
 export class InvertedIndex {
-  private readonly db: IndexedDBWrapper;
   private readonly tokenizer: ITokenizer;
   private readonly invertedIndexStore: InvertedIndexStore;
-  private readonly docTermsStore: DocTermsStore;
+  private readonly documentsStore: DocumentsStore;
 
   constructor(db: IndexedDBWrapper, tokenizer: ITokenizer) {
-    this.db = db;
     this.tokenizer = tokenizer;
     this.invertedIndexStore = new InvertedIndexStore(db);
-    this.docTermsStore = new DocTermsStore(db);
+    this.documentsStore = new DocumentsStore(db);
   }
 
   /**
@@ -35,43 +33,8 @@ export class InvertedIndex {
       await this.addTermToIndex(term, docId);
     }
 
-    // 保存文档-词关系
-    for (const term of terms) {
-      await this.saveDocTerm(docId, term);
-    }
-
     // 返回去重后的 terms 数组
     return Array.from(terms);
-  }
-
-  /**
-   * 为多个字段建立索引
-   * @returns 返回文档的所有分词结果（去重后的字符串数组）
-   */
-  async indexDocumentFields(
-    docId: number,
-    fields: Record<string, any>,
-    indexFields?: string[]
-  ): Promise<string[]> {
-    if (!indexFields || indexFields.length === 0) {
-      return [];
-    }
-
-    // 提取需要索引的字段文本
-    const texts: string[] = [];
-    for (const fieldName of indexFields) {
-      const value = fields[fieldName];
-      if (value != null) {
-        texts.push(String(value));
-      }
-    }
-
-    // 合并所有文本并建立索引
-    const combinedText = texts.join(' ');
-    if (combinedText) {
-      return await this.indexDocument(docId, combinedText);
-    }
-    return [];
   }
 
   /**
@@ -107,96 +70,22 @@ export class InvertedIndex {
   }
 
   /**
-   * 保存文档-词关系
-   * 如果文档-词关系不存在，则创建新文档-词关系
-   * 如果文档-词关系存在，则更新现有文档-词关系
-   */
-  private async saveDocTerm(docId: number, term: string): Promise<void> {
-    const docTerm: DocTerm = { docId, term };
-    await this.docTermsStore.put(docTerm);
-  }
-
-  /**
-   * 从倒排索引中查找文档ID
-   */
-  async findDocumentsByTerm(term: string): Promise<Set<number>> {
-    const item = await this.invertedIndexStore.get(term);
-    if (item) {
-      return item.docIds;
-    }
-    return new Set<number>();
-  }
-
-  /**
-   * 从多个词查找文档ID（AND 操作）
-   */
-  async findDocumentsByTermsAnd(terms: string[]): Promise<Set<number>> {
-    if (terms.length === 0) {
-      return new Set();
-    }
-
-    const docIdSets = await Promise.all(terms.map((term) => this.findDocumentsByTerm(term)));
-
-    // 求交集
-    if (docIdSets.length === 0) {
-      return new Set<number>();
-    }
-
-    let result = docIdSets[0];
-    for (let i = 1; i < docIdSets.length; i++) {
-      result = new Set([...result].filter((id) => docIdSets[i].has(id)));
-    }
-
-    return result;
-  }
-
-  /**
-   * 从多个词查找文档ID（OR 操作）
-   */
-  async findDocumentsByTermsOr(terms: string[]): Promise<Set<number>> {
-    if (terms.length === 0) {
-      return new Set();
-    }
-
-    const docIdSets = await Promise.all(terms.map((term) => this.findDocumentsByTerm(term)));
-
-    // 求并集
-    const result = new Set<number>();
-    for (const docIdSet of docIdSets) {
-      for (const docId of docIdSet) {
-        result.add(docId);
-      }
-    }
-
-    return result;
-  }
-
-  /**
    * 删除文档的所有索引
    */
   async removeDocumentIndex(docId: number): Promise<void> {
-    // 获取文档的所有词
-    const terms = await this.getDocumentTerms(docId);
+    // 获取文档对象
+    const doc = await this.documentsStore.get(docId);
+    if (!doc) {
+      return;
+    }
+
+    // 从文档的 terms 字段获取所有词
+    const terms = doc.terms || [];
 
     // 从倒排索引中移除
     for (const term of terms) {
       await this.removeTermFromIndex(term, docId);
     }
-
-    // 删除文档-词关系
-    await this.removeDocTerms(docId);
-  }
-
-  /**
-   * 获取文档的所有词
-   */
-  private async getDocumentTerms(docId: number): Promise<Set<string>> {
-    const docTerms = await this.docTermsStore.getByDocId(docId);
-    const terms = new Set<string>();
-    for (const docTerm of docTerms) {
-      terms.add(docTerm.term);
-    }
-    return terms;
   }
 
   /**
@@ -217,13 +106,6 @@ export class InvertedIndex {
         await this.invertedIndexStore.put(item);
       }
     }
-  }
-
-  /**
-   * 删除文档的所有词关系
-   */
-  private async removeDocTerms(docId: number): Promise<void> {
-    await this.docTermsStore.deleteByDocId(docId);
   }
 
   /**

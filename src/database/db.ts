@@ -62,14 +62,6 @@ export class IndexedDBWrapper {
           });
           docTermsStore.createIndex(INDEX_NAMES.DOC_ID, 'docId', { unique: false });
         }
-
-        // 创建 docFields store
-        if (!db.objectStoreNames.contains(STORE_NAMES.DOC_FIELDS)) {
-          db.createObjectStore(STORE_NAMES.DOC_FIELDS, {
-            keyPath: 'docId',
-          });
-          // 为常用字段创建索引（动态创建）
-        }
       };
     });
   }

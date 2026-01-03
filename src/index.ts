@@ -1,8 +1,6 @@
 import { IndexedDBWrapper } from './database/db';
 import { DocumentsStore } from './database/stores/documents-store';
-import { DocFieldsStore } from './database/stores/doc-fields-store';
 import { InvertedIndexStore } from './database/stores/inverted-index-store';
-import { DocTermsStore } from './database/stores/doc-terms-store';
 import { InvertedIndex } from './indexer/inverted-index';
 import { DefaultTokenizer } from './indexer/tokenizer';
 import { Searcher } from './searcher/search';
@@ -31,9 +29,7 @@ export class InvertedIndexDB {
   private readonly db: IndexedDBWrapper;
   private readonly tokenizer: ITokenizer;
   private documentsStore: DocumentsStore | null = null;
-  private docFieldsStore: DocFieldsStore | null = null;
   private invertedIndexStore: InvertedIndexStore | null = null;
-  private docTermsStore: DocTermsStore | null = null;
   private invertedIndex: InvertedIndex | null = null;
   private searcher: Searcher | null = null;
   // private sorter: Sorter | null = null;
@@ -55,9 +51,7 @@ export class InvertedIndexDB {
 
     await this.db.open();
     this.documentsStore = new DocumentsStore(this.db);
-    this.docFieldsStore = new DocFieldsStore(this.db);
     this.invertedIndexStore = new InvertedIndexStore(this.db);
-    this.docTermsStore = new DocTermsStore(this.db);
     this.invertedIndex = new InvertedIndex(this.db, this.tokenizer);
     this.searcher = new Searcher(this.db, this.invertedIndex, this.tokenizer);
     // this.sorter = new Sorter(this.db);
@@ -143,9 +137,6 @@ export class InvertedIndexDB {
 
     // 删除文档
     await this.deleteDocumentFromStore(docId);
-
-    // 删除字段索引
-    await this.deleteDocFields(docId);
   }
 
   /**
@@ -293,17 +284,6 @@ export class InvertedIndexDB {
   }
 
   /**
-   * 删除文档字段索引
-   */
-  private async deleteDocFields(docId: number): Promise<void> {
-    if (!this.docFieldsStore) {
-      throw new Error('DocFieldsStore not initialized');
-    }
-
-    await this.docFieldsStore.delete(docId);
-  }
-
-  /**
    * 建立或更新文档索引
    *
    * @param docId 文档ID
@@ -330,9 +310,6 @@ export class InvertedIndexDB {
           texts.push(String(value));
         }
       }
-
-      // 保存字段索引
-      await this.saveDocFields(docId, doc, indexFields);
     } else {
       // 索引所有字符串字段（排除系统字段）
       const extractedFields = this.extractIndexableFields(doc);
@@ -341,11 +318,6 @@ export class InvertedIndexDB {
         if (value != null) {
           texts.push(String(value));
         }
-      }
-
-      // 保存字段索引
-      if (extractedFields.length > 0) {
-        await this.saveDocFields(docId, doc, extractedFields);
       }
     }
 
@@ -362,30 +334,6 @@ export class InvertedIndexDB {
       doc.terms = [];
       await this.saveDocument(docId, doc);
     }
-  }
-
-  /**
-   * 保存文档字段索引
-   */
-  private async saveDocFields<T extends BaseDocument>(
-    docId: number,
-    doc: T,
-    fields: string[]
-  ): Promise<void> {
-    if (!this.docFieldsStore) {
-      throw new Error('DocFieldsStore not initialized');
-    }
-
-    const fieldValues: Record<string, any> = {};
-
-    for (const fieldName of fields) {
-      const value = this.getFieldValue(doc, fieldName);
-      if (value !== undefined) {
-        fieldValues[fieldName] = value;
-      }
-    }
-
-    await this.docFieldsStore.put(docId, fieldValues);
   }
 
   /**
@@ -410,11 +358,11 @@ export class InvertedIndexDB {
    * 清空索引
    */
   private async clearIndexes(): Promise<void> {
-    if (!this.invertedIndexStore || !this.docTermsStore) {
+    if (!this.invertedIndexStore) {
       throw new Error('Stores not initialized');
     }
 
-    await Promise.all([this.invertedIndexStore.clear(), this.docTermsStore.clear()]);
+    await Promise.all([this.invertedIndexStore.clear()]);
   }
 
   /**

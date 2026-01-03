@@ -201,16 +201,6 @@ export interface DocTerm {
 }
 
 /**
- * 文档字段索引
- */
-export interface DocFields {
-  /** 文档ID */
-  docId: number;
-  /** 字段值 */
-  fields: Record<string, any>;
-}
-
-/**
  * 重建索引进度回调
  */
 export interface RebuildIndexProgress {

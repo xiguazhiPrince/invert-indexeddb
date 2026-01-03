@@ -1,6 +1,5 @@
 import { InvertedIndex } from '../indexer/inverted-index';
 import { QueryParser } from './query-parser';
-// import { Sorter } from './sorter';
 import { IndexedDBWrapper } from '../database/db';
 import { DocumentsStore } from '../database/stores/documents-store';
 import {
@@ -11,7 +10,6 @@ import {
   MatchInfo,
   ITokenizer,
   BaseDocument,
-  SortField,
 } from '../types';
 import { findSimilarTerms } from '../indexer/ngram';
 import { STORE_NAMES, INDEX_NAMES } from '../database/schema';
