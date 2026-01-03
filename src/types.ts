@@ -1,4 +1,18 @@
 /**
+ * 文档基础接口，包含所有文档的通用字段
+ */
+export interface BaseDocument {
+  /** 文档ID */
+  docId: number;
+  /** 创建时间戳（毫秒） */
+  createdAt: number;
+  /** 更新时间戳（毫秒） */
+  updatedAt: number;
+  /** 索引词数组 */
+  terms?: string[];
+}
+
+/**
  * 分词器接口
  */
 export interface ITokenizer {
@@ -63,6 +77,29 @@ export interface SearchIdsOptions extends SearchOptions {
 }
 
 /**
+ * 基于游标的搜索选项
+ * 用于 searchWithCursor 方法，使用 IndexedDB 游标进行排序和分页
+ */
+export interface SearchWithCursorOptions {
+  /** 排序字段 */
+  sortBy?: 'createdAt' | 'updatedAt' | 'docId';
+  /** 排序方向 */
+  order?: 'asc' | 'desc';
+  /** 逻辑运算符：AND 或 OR */
+  operator?: 'AND' | 'OR';
+  /** 限制返回数量 */
+  limit?: number;
+  /** 游标分页的最后一个键值（用于获取下一页） */
+  lastKey?: number;
+  /** 是否高亮关键词 */
+  highlight?: boolean;
+  /** 模糊匹配 */
+  fuzzy?: boolean;
+  /** 精确匹配（短语搜索） */
+  exact?: boolean;
+}
+
+/**
  * 排序字段配置
  */
 export interface SortField {
@@ -75,7 +112,7 @@ export interface SortField {
 /**
  * 搜索结果项
  */
-export interface SearchResultItem<T = any> {
+export interface SearchResultItem<T extends BaseDocument = BaseDocument> {
   /** 文档ID */
   docId: number;
   /** 完整文档 */
@@ -103,7 +140,7 @@ export interface MatchInfo {
 /**
  * 搜索结果
  */
-export interface SearchResult<T = any> {
+export interface SearchResult<T extends BaseDocument = BaseDocument> {
   /** 匹配的文档ID列表 */
   docIds: number[];
   /** 搜索结果项 */
@@ -171,4 +208,18 @@ export interface DocFields {
   docId: number;
   /** 字段值 */
   fields: Record<string, any>;
+}
+
+/**
+ * 重建索引进度回调
+ */
+export interface RebuildIndexProgress {
+  /** 当前已处理的文档数 */
+  current: number;
+  /** 总文档数 */
+  total: number;
+  /** 当前处理的文档ID */
+  docId?: number;
+  /** 进度百分比 (0-100) */
+  percentage: number;
 }

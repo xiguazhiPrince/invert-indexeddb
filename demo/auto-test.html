@@ -825,7 +825,7 @@
                     
                     // 执行搜索
                     const result = await searchDB.search(testCase.query, testCase.options);
-                    const actualDocIds = result.docIds;
+                    const actualDocIds = result.items.map(item => item.docId);
                     
                     // 获取关键词的分词结果
                     const queryTokens = tokenizer.tokenize(testCase.query);

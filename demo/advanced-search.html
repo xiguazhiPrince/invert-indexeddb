@@ -110,6 +110,61 @@
             background: yellow;
             font-weight: bold;
         }
+        .validation {
+            margin-top: 15px;
+            padding: 12px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            border-left: 4px solid #667eea;
+        }
+        .validation.pass {
+            border-left-color: #27ae60;
+            background: #efe;
+        }
+        .validation.fail {
+            border-left-color: #e74c3c;
+            background: #fee;
+        }
+        .validation-header {
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .validation-detail {
+            margin-top: 8px;
+            font-size: 13px;
+            color: #666;
+        }
+        .doc-id-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            margin: 2px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-family: monospace;
+        }
+        .doc-id-tag.expected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .doc-id-tag.actual {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .doc-id-tag.missing {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .doc-id-tag.unexpected {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
     </style>
 </head>
 <body>
@@ -204,10 +259,6 @@
                 <input type="number" id="combinedLimit" value="10" min="1">
             </div>
             <div class="form-group">
-                <label>分页偏移:</label>
-                <input type="number" id="combinedOffset" value="0" min="0">
-            </div>
-            <div class="form-group">
                 <div class="checkbox-group">
                     <input type="checkbox" id="combinedFuzzy">
                     <label for="combinedFuzzy">模糊搜索</label>
@@ -234,6 +285,8 @@
     <script src="../dist/invert-indexeddb.iife.js"></script>
     <script>
         let searchDB = null;
+        // 文档ID映射：通过title/content识别文档的实际ID
+        const docIdMap = new Map();
 
         const testDocuments = [
             { title: '测试文档一', content: '这是一个测试文档，用于验证搜索功能。', category: '技术' },
@@ -246,6 +299,52 @@
             { title: '用户手册', content: '用户手册包含测试和使用说明。', category: '文档' }
         ];
 
+        // 预期输出定义（基于文档的title/content）
+        const expectedResults = {
+            // 模糊搜索 "测试" (fuzzy=true)
+            fuzzy_test: {
+                query: '测试',
+                options: { fuzzy: true },
+                expectedTitles: ['测试文档一', '示例文章', '学习笔记', '项目文档', '测试报告', '开发指南', '用户手册']
+            },
+            // 精确搜索 "测试文档" (exact=true)
+            exact_测试文档: {
+                query: '测试文档',
+                options: { exact: true },
+                expectedTitles: ['测试文档一']
+            },
+            // 逻辑运算符搜索 "测试 文档" (AND)
+            operator_AND_测试_文档: {
+                query: '测试 文档',
+                options: { operator: 'AND' },
+                expectedTitles: ['测试文档一', '学习笔记', '项目文档']
+            },
+            // 逻辑运算符搜索 "测试 文档" (OR)
+            operator_OR_测试_文档: {
+                query: '测试 文档',
+                options: { operator: 'OR' },
+                expectedTitles: ['测试文档一', '示例文章', '学习笔记', '项目文档', '测试报告', '开发指南', '用户手册']
+            },
+            // 关键词高亮 "测试" (highlight=true)
+            highlight_测试: {
+                query: '测试',
+                options: { highlight: true },
+                expectedTitles: ['测试文档一', '示例文章', '学习笔记', '项目文档', '测试报告', '开发指南', '用户手册']
+            },
+            // 综合搜索 "测试" (limit=10, fuzzy=false, highlight=true, operator=AND)
+            combined_测试_AND: {
+                query: '测试',
+                options: { limit: 10, fuzzy: false, highlight: true, operator: 'AND' },
+                expectedTitles: ['测试文档一', '示例文章', '学习笔记', '项目文档', '测试报告', '开发指南', '用户手册']
+            },
+            // 综合搜索 "测试" (limit=10, fuzzy=false, highlight=true, operator=OR)
+            combined_测试_OR: {
+                query: '测试',
+                options: { limit: 10, fuzzy: false, highlight: true, operator: 'OR' },
+                expectedTitles: ['测试文档一', '示例文章', '学习笔记', '项目文档', '测试报告', '开发指南', '用户手册']
+            }
+        };
+
         async function initAndAddData() {
             try {
                 searchDB = new InvertedIndexDB.InvertedIndexDB('advancedSearchDB', {
@@ -255,10 +354,13 @@
                 
                 // 清空旧数据
                 await searchDB.clear();
+                docIdMap.clear();
                 
-                // 添加测试数据
+                // 添加测试数据并记录ID映射
                 for (const doc of testDocuments) {
-                    await searchDB.addDocument(doc, ['title', 'content']);
+                    const docId = await searchDB.addDocument(doc, ['title', 'content']);
+                    // 使用title作为key来映射文档ID
+                    docIdMap.set(doc.title, docId);
                 }
                 
                 showResult('initResult', `成功添加 ${testDocuments.length} 个测试文档！`, 'success');
@@ -274,10 +376,19 @@
                 const fuzzy = document.getElementById('fuzzyEnabled').checked;
                 
                 const results = await searchDB.search(query, { fuzzy });
+                
+                // 获取预期输出（仅当fuzzy=true且query="测试"时）
+                let validation = null;
+                if (fuzzy && query === '测试') {
+                    const expected = expectedResults.fuzzy_test;
+                    validation = validateResults(results, expected.expectedTitles, '模糊搜索');
+                }
+                
                 showResult('fuzzyResult', 
-                    `找到 ${results.total} 个结果 (模糊搜索: ${fuzzy ? '开启' : '关闭'})`, 
+                    `找到 ${results.items.length} 个结果 (模糊搜索: ${fuzzy ? '开启' : '关闭'})`, 
                     'success',
-                    results
+                    results,
+                    validation
                 );
             } catch (error) {
                 showResult('fuzzyResult', '搜索失败: ' + error.message, 'error');
@@ -291,10 +402,19 @@
                 const exact = document.getElementById('exactEnabled').checked;
                 
                 const results = await searchDB.search(query, { exact });
+                
+                // 获取预期输出（仅当exact=true且query="测试文档"时）
+                let validation = null;
+                if (exact && query === '测试文档') {
+                    const expected = expectedResults.exact_测试文档;
+                    validation = validateResults(results, expected.expectedTitles, '精确搜索');
+                }
+                
                 showResult('exactResult', 
-                    `找到 ${results.total} 个结果 (精确搜索: ${exact ? '开启' : '关闭'})`, 
+                    `找到 ${results.items.length} 个结果 (精确搜索: ${exact ? '开启' : '关闭'})`, 
                     'success',
-                    results
+                    results,
+                    validation
                 );
             } catch (error) {
                 showResult('exactResult', '搜索失败: ' + error.message, 'error');
@@ -307,11 +427,39 @@
                 const query = document.getElementById('operatorQuery').value;
                 const operator = document.getElementById('operatorType').value;
                 
+                // 手动测试查询解析
+                const tokenizer = new InvertedIndexDB.MixedTokenizer();
+                const queryTokens = tokenizer.tokenize(query);
+                const queryTerms = queryTokens.map(t => t.term);
+                
                 const results = await searchDB.search(query, { operator });
+                
+                // 获取所有匹配文档的详细信息
+                const resultDetails = await Promise.all(results.items.map(async (item) => {
+                    const doc = await searchDB.getDocument(item.docId);
+                    return {
+                        docId: item.docId,
+                        title: doc?.title,
+                        docTerms: doc?.terms,
+                        queryTermsInDoc: queryTerms.filter(term => doc?.terms?.includes(term))
+                    };
+                }));
+                
+                // 获取预期输出（仅当query="测试 文档"时）
+                let validation = null;
+                if (query === '测试 文档') {
+                    const expectedKey = operator === 'AND' ? 'operator_AND_测试_文档' : 'operator_OR_测试_文档';
+                    const expected = expectedResults[expectedKey];
+                    if (expected) {
+                        validation = validateResults(results, expected.expectedTitles, `逻辑运算符搜索(${operator})`);
+                    }
+                }
+                
                 showResult('operatorResult', 
-                    `找到 ${results.total} 个结果 (运算符: ${operator})`, 
+                    `找到 ${results.items.length} 个结果 (运算符: ${operator})`, 
                     'success',
-                    results
+                    results,
+                    validation
                 );
             } catch (error) {
                 showResult('operatorResult', '搜索失败: ' + error.message, 'error');
@@ -326,6 +474,13 @@
                 
                 const results = await searchDB.search(query, { highlight });
                 
+                // 获取预期输出（仅当highlight=true且query="测试"时）
+                let validation = null;
+                if (highlight && query === '测试') {
+                    const expected = expectedResults.highlight_测试;
+                    validation = validateResults(results, expected.expectedTitles, '关键词高亮');
+                }
+                
                 let displayResults = results;
                 if (highlight && results.items) {
                     // 显示高亮后的内容
@@ -339,9 +494,10 @@
                 }
                 
                 showResult('highlightResult', 
-                    `找到 ${results.total} 个结果 (高亮: ${highlight ? '开启' : '关闭'})`, 
+                    `找到 ${results.items.length} 个结果 (高亮: ${highlight ? '开启' : '关闭'})`, 
                     'success',
-                    displayResults
+                    displayResults,
+                    validation
                 );
             } catch (error) {
                 showResult('highlightResult', '搜索失败: ' + error.message, 'error');
@@ -353,7 +509,10 @@
             try {
                 const query = document.getElementById('combinedQuery').value;
                 const limit = parseInt(document.getElementById('combinedLimit').value);
-                const offset = parseInt(document.getElementById('combinedOffset').value);
+                if (isNaN(limit) || limit <= 0) {
+                    showResult('combinedResult', '请输入有效的限制数量（大于0）', 'error');
+                    return;
+                }
                 const fuzzy = document.getElementById('combinedFuzzy').checked;
                 const highlight = document.getElementById('combinedHighlight').checked;
                 const operator = document.getElementById('combinedOperator').value;
@@ -362,14 +521,24 @@
                     fuzzy,
                     highlight,
                     operator,
-                    limit,
-                    offset
+                    limit
                 });
                 
+                // 获取预期输出（仅当query="测试"且limit=10, fuzzy=false, highlight=true时）
+                let validation = null;
+                if (query === '测试' && limit === 10 && !fuzzy && highlight) {
+                    const expectedKey = operator === 'AND' ? 'combined_测试_AND' : 'combined_测试_OR';
+                    const expected = expectedResults[expectedKey];
+                    if (expected) {
+                        validation = validateResults(results, expected.expectedTitles, `综合搜索(${operator})`);
+                    }
+                }
+                
                 showResult('combinedResult', 
-                    `找到 ${results.total} 个结果，显示 ${results.items.length} 个`, 
+                    `找到 ${results.items.length} 个结果${results.nextKey ? ' (还有更多)' : ''}`, 
                     'success',
-                    results
+                    results,
+                    validation
                 );
             } catch (error) {
                 showResult('combinedResult', '搜索失败: ' + error.message, 'error');
@@ -390,7 +559,109 @@
             return true;
         }
 
-        function showResult(elementId, message, type, data = null) {
+        // 验证搜索结果
+        function validateResults(actualResults, expectedTitles, testName) {
+            if (!expectedTitles || expectedTitles.length === 0) {
+                return {
+                    pass: true,
+                    message: '无预期输出定义',
+                    expectedIds: [],
+                    actualIds: actualResults.items.map(item => item.docId),
+                    missing: [],
+                    unexpected: []
+                };
+            }
+
+            // 将预期的title转换为实际的docId
+            const expectedIds = expectedTitles
+                .map(title => docIdMap.get(title))
+                .filter(id => id !== undefined);
+
+            // 获取实际的docId
+            const actualIds = actualResults.items.map(item => item.docId);
+
+            // 创建集合用于对比
+            const expectedSet = new Set(expectedIds);
+            const actualSet = new Set(actualIds);
+
+            // 找出差异
+            const missing = expectedIds.filter(id => !actualSet.has(id));
+            const unexpected = actualIds.filter(id => !expectedSet.has(id));
+
+            // 判断是否通过（允许顺序不同，但集合必须相同）
+            const pass = expectedSet.size === actualSet.size && 
+                        missing.length === 0 && 
+                        unexpected.length === 0;
+
+            return {
+                pass,
+                message: pass ? '✓ 验证通过' : '✗ 验证失败',
+                expectedIds,
+                actualIds,
+                missing,
+                unexpected,
+                expectedCount: expectedIds.length,
+                actualCount: actualIds.length
+            };
+        }
+
+        // 显示验证结果
+        function showValidation(elementId, validation) {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+
+            const validationClass = validation.pass ? 'validation pass' : 'validation fail';
+            let validationHtml = `
+                <div class="${validationClass}">
+                    <div class="validation-header">
+                        ${validation.message}
+                    </div>
+                    <div class="validation-detail">
+                        <div><strong>预期结果数量:</strong> ${validation.expectedCount}</div>
+                        <div><strong>实际结果数量:</strong> ${validation.actualCount}</div>
+            `;
+
+            if (validation.expectedIds.length > 0) {
+                validationHtml += `
+                    <div style="margin-top: 8px;">
+                        <strong>预期文档ID:</strong>
+                        ${validation.expectedIds.map(id => `<span class="doc-id-tag expected">${id}</span>`).join('')}
+                    </div>
+                `;
+            }
+
+            if (validation.actualIds.length > 0) {
+                validationHtml += `
+                    <div style="margin-top: 8px;">
+                        <strong>实际文档ID:</strong>
+                        ${validation.actualIds.map(id => `<span class="doc-id-tag actual">${id}</span>`).join('')}
+                    </div>
+                `;
+            }
+
+            if (validation.missing.length > 0) {
+                validationHtml += `
+                    <div style="margin-top: 8px; color: #721c24;">
+                        <strong>缺失的文档ID:</strong>
+                        ${validation.missing.map(id => `<span class="doc-id-tag missing">${id}</span>`).join('')}
+                    </div>
+                `;
+            }
+
+            if (validation.unexpected.length > 0) {
+                validationHtml += `
+                    <div style="margin-top: 8px; color: #856404;">
+                        <strong>意外的文档ID:</strong>
+                        ${validation.unexpected.map(id => `<span class="doc-id-tag unexpected">${id}</span>`).join('')}
+                    </div>
+                `;
+            }
+
+            validationHtml += `</div></div>`;
+            element.insertAdjacentHTML('beforeend', validationHtml);
+        }
+
+        function showResult(elementId, message, type, data = null, validation = null) {
             const element = document.getElementById(elementId);
             const className = type === 'error' ? 'result error' : 'result success';
             let html = `<div class="${className}">${message}</div>`;
@@ -398,6 +669,11 @@
                 html += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
             }
             element.innerHTML = html;
+            
+            // 如果有验证信息，显示验证结果
+            if (validation) {
+                showValidation(elementId, validation);
+            }
         }
 
         window.addEventListener('load', () => {

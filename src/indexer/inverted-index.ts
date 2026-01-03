@@ -20,9 +20,13 @@ export class InvertedIndex {
   }
 
   /**
-   * 为文档建立索引
+   * 为文档建立索引数据
+   *
+   * @param docId 文档ID
+   * @param text 文档文本
+   * @returns 返回文档的所有分词结果（去重后的字符串数组）
    */
-  async indexDocument(docId: number, text: string): Promise<void> {
+  async indexDocument(docId: number, text: string): Promise<string[]> {
     const tokens = this.tokenizer.tokenize(text);
     const terms = new Set(tokens.map((t) => t.term));
 
@@ -35,18 +39,22 @@ export class InvertedIndex {
     for (const term of terms) {
       await this.saveDocTerm(docId, term);
     }
+
+    // 返回去重后的 terms 数组
+    return Array.from(terms);
   }
 
   /**
    * 为多个字段建立索引
+   * @returns 返回文档的所有分词结果（去重后的字符串数组）
    */
   async indexDocumentFields(
     docId: number,
     fields: Record<string, any>,
     indexFields?: string[]
-  ): Promise<void> {
+  ): Promise<string[]> {
     if (!indexFields || indexFields.length === 0) {
-      return;
+      return [];
     }
 
     // 提取需要索引的字段文本
@@ -60,11 +68,22 @@ export class InvertedIndex {
 
     // 合并所有文本并建立索引
     const combinedText = texts.join(' ');
-    await this.indexDocument(docId, combinedText);
+    if (combinedText) {
+      return await this.indexDocument(docId, combinedText);
+    }
+    return [];
   }
 
   /**
    * 添加词到倒排索引
+   * 如果词不存在，则创建新倒排索引项
+   * 如果词存在，则更新现有倒排索引项：
+   *   如果文档ID不存在，则添加文档ID
+   *   如果文档ID存在，则更新文档ID的计数
+   *
+   * @param term 词
+   * @param docId 文档ID
+   * @returns 返回添加的词
    */
   private async addTermToIndex(term: string, docId: number): Promise<void> {
     const existingItem = await this.invertedIndexStore.get(term);
@@ -89,6 +108,8 @@ export class InvertedIndex {
 
   /**
    * 保存文档-词关系
+   * 如果文档-词关系不存在，则创建新文档-词关系
+   * 如果文档-词关系存在，则更新现有文档-词关系
    */
   private async saveDocTerm(docId: number, term: string): Promise<void> {
     const docTerm: DocTerm = { docId, term };

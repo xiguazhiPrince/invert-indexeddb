@@ -224,6 +224,10 @@
 
             try {
                 const count = parseInt(document.getElementById('batchCount').value);
+                if (isNaN(count) || count <= 0) {
+                    showResult('batchResult', '请输入有效的文档数量（大于0）', 'error');
+                    return;
+                }
                 const indexFields = document.getElementById('batchIndexFields').value
                     .split(',')
                     .map(f => f.trim())
@@ -322,12 +326,13 @@
                 const duration = (endTime - startTime).toFixed(2);
 
                 showResult('batchSearchResult', 
-                    `找到 ${results.total} 个结果，耗时 ${duration} 毫秒`, 
+                    `找到 ${results.items.length} 个结果，耗时 ${duration} 毫秒`, 
                     'success',
                     {
-                        total: results.total,
+                        count: results.items.length,
                         duration: duration + 'ms',
-                        items: results.items.slice(0, 10)
+                        items: results.items.slice(0, 10),
+                        hasMore: !!results.nextKey
                     }
                 );
             } catch (error) {

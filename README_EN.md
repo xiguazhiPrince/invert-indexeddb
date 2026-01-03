@@ -22,8 +22,9 @@ npm install invert-indexeddb
 
 or
 
-````bash
+```bash
 pnpm install invert-indexeddb
+```
 
 ## Quick Start
 
@@ -49,29 +50,36 @@ const docId = await search.addDocument(
 // Search
 const results = await search.search('example');
 console.log(results.items); // Search results
-````
+```
 
-### Lightweight Search (for sorting)
+### Cursor-based Search (Recommended for Sorting and Pagination)
 
 ```typescript
-// Only return IDs and specified fields to reduce memory usage
-const lightResults = await search.searchIds('example', {
-  fields: ['title', 'createdAt', 'score'],
-  sortBy: { field: 'createdAt', order: 'desc' },
-  limit: 20,
-  offset: 0,
+// Use cursor-based search with efficient sorting and pagination
+const results = await search.searchWithCursor('example', {
+  sortBy: 'createdAt', // Sort by creation time
+  order: 'desc', // Descending order
+  limit: 20, // 20 items per page
+  fuzzy: false, // Whether to use fuzzy matching
+  exact: false, // Whether to use exact matching (phrase search)
+  highlight: true, // Whether to highlight keywords
 });
 
-// Results only contain IDs and specified fields
-console.log(lightResults.items);
-// [
-//   { docId: '1', fields: { title: '...', createdAt: 123456, score: 95 } },
-//   ...
-// ]
+console.log(results.items); // Search results
+console.log(results.nextKey); // Cursor key for next page
 
-// Then fetch full documents as needed
-const fullDocs = await Promise.all(lightResults.docIds.map((id) => search.getDocument(id)));
+// Get next page
+if (results.nextKey) {
+  const nextPage = await search.searchWithCursor('example', {
+    sortBy: 'createdAt',
+    order: 'desc',
+    limit: 20,
+    lastKey: results.nextKey, // Use nextKey from previous page
+  });
+}
 ```
+
+> **Note**: The `searchIds` method is deprecated. Please use `searchWithCursor` instead.
 
 ### Using Custom Tokenizer
 
@@ -120,31 +128,40 @@ Initialize the database, must be called before other operations.
 await search.init();
 ```
 
-##### addDocument(doc, indexFields?)
+##### addDocument<T>(doc, indexFields?)
 
-Add a document and build index.
+Add a document and build index. Supports generic type constraints and automatically handles `createdAt` and `updatedAt` timestamps.
 
 ```typescript
-const docId = await search.addDocument(
+interface MyDocument extends BaseDocument {
+  title: string;
+  content: string;
+  category: string;
+}
+
+const docId = await search.addDocument<MyDocument>(
   {
     title: 'Title',
     content: 'Content',
-    createdAt: Date.now(),
+    category: 'Technology',
+    // createdAt and updatedAt are automatically set, no need to specify manually
   },
-  ['title', 'createdAt']
-); // Specify fields to be indexed
+  ['title', 'content'] // Specify fields to be indexed
+);
 ```
 
-##### updateDocument(docId, doc, indexFields?)
+##### updateDocument<T>(docId, doc, indexFields?)
 
-Update a document and rebuild index.
+Update a document and rebuild index. Supports generic type constraints and automatically updates `updatedAt` timestamp.
 
 ```typescript
-await search.updateDocument(
+await search.updateDocument<MyDocument>(
   docId,
   {
     title: 'New Title',
     content: 'New Content',
+    category: 'Technology',
+    // updatedAt is automatically updated, no need to specify manually
   },
   ['title']
 );
@@ -158,12 +175,12 @@ Delete a document and its index.
 await search.deleteDocument(docId);
 ```
 
-##### getDocument(docId)
+##### getDocument<T>(docId)
 
-Get a single document.
+Get a single document. Supports generic type constraints.
 
 ```typescript
-const doc = await search.getDocument(docId);
+const doc = await search.getDocument<MyDocument>(docId);
 ```
 
 ##### search(query, options?)
@@ -181,18 +198,28 @@ const results = await search.search('keyword', {
 });
 ```
 
-##### searchIds(query, options?)
+##### searchWithCursor<T>(query, options?)
 
-Lightweight search that only returns IDs and specified fields.
+Cursor-based search with efficient sorting and pagination. **Recommended to use this method instead of the deprecated `searchIds` method**.
 
 ```typescript
-const results = await search.searchIds('keyword', {
-  fields: ['title', 'createdAt'], // Specify fields to return
-  sortBy: { field: 'createdAt', order: 'desc' }, // Sorting
-  limit: 20,
-  offset: 0,
+const results = await search.searchWithCursor<MyDocument>('keyword', {
+  sortBy: 'createdAt', // Sort field: 'createdAt' | 'updatedAt' | 'docId'
+  order: 'desc', // Sort direction: 'asc' | 'desc'
+  limit: 20, // Items per page
+  lastKey: undefined, // nextKey from previous page, used for pagination
+  operator: 'AND', // Logical operator: 'AND' | 'OR'
+  fuzzy: false, // Whether to use fuzzy matching
+  exact: false, // Whether to use exact matching (phrase search)
+  highlight: true, // Whether to highlight keywords
 });
+
+// Results contain full documents and next page cursor
+console.log(results.items); // SearchResultItem<T>[]
+console.log(results.nextKey); // Cursor key for next page
 ```
+
+> **Note**: The `searchIds` method is deprecated. Please use `searchWithCursor` instead.
 
 ##### clear()
 
@@ -212,12 +239,15 @@ console.log(stats.documentCount); // Document count
 console.log(stats.termCount); // Index term count
 ```
 
-##### rebuildIndex()
+##### rebuildIndex(onProgress?)
 
-Rebuild all indexes.
+Rebuild all indexes. Uses cursors to process documents one by one, avoiding memory overflow. Supports progress callback.
 
 ```typescript
-await search.rebuildIndex();
+await search.rebuildIndex((progress) => {
+  console.log(`Progress: ${progress.current}/${progress.total} (${progress.percentage}%)`);
+  console.log(`Current document ID: ${progress.docId}`);
+});
 ```
 
 ## Algorithm Description
@@ -237,13 +267,15 @@ The default tokenizer is based on spaces and punctuation marks, supporting mixed
 ## Performance Optimization
 
 - Use IndexedDB indexes to accelerate queries
+- Cursor-based search and index rebuilding to avoid memory overflow
 - Batch operations to reduce transaction overhead
-- Lightweight queries return only necessary fields
 - Asynchronous processing without blocking the main thread
+- Support progress callback for real-time monitoring of index rebuilding progress
 
 ### Performance Benchmarks
 
 - **Rebuild index for 10,000 documents**: 655,956.70 ms (approximately 656 seconds / 11 minutes)
+- **Cursor-based index rebuilding**: Avoids loading all documents into memory at once, suitable for processing large amounts of data
 
 ## Browser Support
 

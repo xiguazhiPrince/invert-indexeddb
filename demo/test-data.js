@@ -132,15 +132,6 @@ const testCases = [
     expectedDocIds: ['doc1', 'doc4'], // 只返回前 2 个（按 docId 排序后应该是 doc1, doc4）
   },
   {
-    name: '分页搜索',
-    query: '开发',
-    options: {
-      limit: 2,
-      offset: 2,
-    },
-    expectedDocIds: ['doc7'], // 跳过前 2 个（doc1, doc4），返回接下来的 1 个（doc7）
-  },
-  {
     name: '搜索作者 - 张三',
     query: '张三',
     options: {},

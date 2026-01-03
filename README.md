@@ -52,27 +52,34 @@ const results = await search.search('示例');
 console.log(results.items); // 搜索结果
 ```
 
-### 轻量级搜索（用于排序）
+### 基于游标的搜索（推荐用于排序和分页）
 
 ```typescript
-// 只返回ID和指定字段，减少内存占用
-const lightResults = await search.searchIds('示例', {
-  fields: ['title', 'createdAt', 'score'],
-  sortBy: { field: 'createdAt', order: 'desc' },
-  limit: 20,
-  offset: 0,
+// 使用游标搜索，支持高效排序和分页
+const results = await search.searchWithCursor('示例', {
+  sortBy: 'createdAt', // 按创建时间排序
+  order: 'desc', // 降序
+  limit: 20, // 每页20条
+  fuzzy: false, // 是否模糊匹配
+  exact: false, // 是否精确匹配（短语搜索）
+  highlight: true, // 是否高亮关键词
 });
 
-// 结果只包含ID和指定字段
-console.log(lightResults.items);
-// [
-//   { docId: '1', fields: { title: '...', createdAt: 123456, score: 95 } },
-//   ...
-// ]
+console.log(results.items); // 搜索结果
+console.log(results.nextKey); // 下一页的游标键值
 
-// 然后可以根据需要获取完整文档
-const fullDocs = await Promise.all(lightResults.docIds.map((id) => search.getDocument(id)));
+// 获取下一页
+if (results.nextKey) {
+  const nextPage = await search.searchWithCursor('示例', {
+    sortBy: 'createdAt',
+    order: 'desc',
+    limit: 20,
+    lastKey: results.nextKey, // 使用上一页的 nextKey
+  });
+}
 ```
+
+> **注意**：`searchIds` 方法已废弃，请使用 `searchWithCursor` 代替。
 
 ### 使用自定义分词器
 
@@ -121,31 +128,40 @@ new InvertedIndexDB(dbName: string, options?: InitOptions)
 await search.init();
 ```
 
-##### addDocument(doc, indexFields?)
+##### addDocument<T>(doc, indexFields?)
 
-添加文档并建立索引。
+添加文档并建立索引。支持泛型类型约束，自动处理 `createdAt` 和 `updatedAt` 时间戳。
 
 ```typescript
-const docId = await search.addDocument(
+interface MyDocument extends BaseDocument {
+  title: string;
+  content: string;
+  category: string;
+}
+
+const docId = await search.addDocument<MyDocument>(
   {
     title: '标题',
     content: '内容',
-    createdAt: Date.now(),
+    category: '技术',
+    // createdAt 和 updatedAt 会自动设置，无需手动指定
   },
-  ['title', 'createdAt']
-); // 指定需要索引的字段
+  ['title', 'content'] // 指定需要索引的字段
+);
 ```
 
-##### updateDocument(docId, doc, indexFields?)
+##### updateDocument<T>(docId, doc, indexFields?)
 
-更新文档并重建索引。
+更新文档并重建索引。支持泛型类型约束，自动更新 `updatedAt` 时间戳。
 
 ```typescript
-await search.updateDocument(
+await search.updateDocument<MyDocument>(
   docId,
   {
     title: '新标题',
     content: '新内容',
+    category: '技术',
+    // updatedAt 会自动更新，无需手动指定
   },
   ['title']
 );
@@ -159,12 +175,12 @@ await search.updateDocument(
 await search.deleteDocument(docId);
 ```
 
-##### getDocument(docId)
+##### getDocument<T>(docId)
 
-获取单个文档。
+获取单个文档。支持泛型类型约束。
 
 ```typescript
-const doc = await search.getDocument(docId);
+const doc = await search.getDocument<MyDocument>(docId);
 ```
 
 ##### search(query, options?)
@@ -182,18 +198,28 @@ const results = await search.search('关键词', {
 });
 ```
 
-##### searchIds(query, options?)
+##### searchWithCursor<T>(query, options?)
 
-轻量级搜索，只返回ID和指定字段。
+基于游标的搜索，支持高效排序和分页。**推荐使用此方法替代已废弃的 `searchIds` 方法**。
 
 ```typescript
-const results = await search.searchIds('关键词', {
-  fields: ['title', 'createdAt'], // 指定返回字段
-  sortBy: { field: 'createdAt', order: 'desc' }, // 排序
-  limit: 20,
-  offset: 0,
+const results = await search.searchWithCursor<MyDocument>('关键词', {
+  sortBy: 'createdAt', // 排序字段：'createdAt' | 'updatedAt' | 'docId'
+  order: 'desc', // 排序方向：'asc' | 'desc'
+  limit: 20, // 每页数量
+  lastKey: undefined, // 上一页的 nextKey，用于分页
+  operator: 'AND', // 逻辑运算符：'AND' | 'OR'
+  fuzzy: false, // 是否模糊匹配
+  exact: false, // 是否精确匹配（短语搜索）
+  highlight: true, // 是否高亮关键词
 });
+
+// 结果包含完整文档和下一页游标
+console.log(results.items); // SearchResultItem<T>[]
+console.log(results.nextKey); // 下一页的游标键值
 ```
+
+> **注意**：`searchIds` 方法已废弃，请使用 `searchWithCursor` 代替。
 
 ##### clear()
 
@@ -213,12 +239,15 @@ console.log(stats.documentCount); // 文档数
 console.log(stats.termCount); // 索引词数
 ```
 
-##### rebuildIndex()
+##### rebuildIndex(onProgress?)
 
-重建所有索引。
+重建所有索引。使用游标逐个处理文档，避免内存溢出。支持进度回调。
 
 ```typescript
-await search.rebuildIndex();
+await search.rebuildIndex((progress) => {
+  console.log(`进度: ${progress.current}/${progress.total} (${progress.percentage}%)`);
+  console.log(`当前处理文档ID: ${progress.docId}`);
+});
 ```
 
 ## 算法说明
@@ -238,13 +267,15 @@ await search.rebuildIndex();
 ## 性能优化
 
 - 使用 IndexedDB 索引加速查询
+- 基于游标的搜索和索引重建，避免内存溢出
 - 批量操作减少事务开销
-- 轻量级查询只返回必要字段
 - 异步处理，不阻塞主线程
+- 支持进度回调，实时监控重建索引进度
 
 ### 性能测试
 
 - **1万条数据重建索引耗时**：655,956.70 毫秒（约 656 秒 / 11 分钟）
+- **游标化重建索引**：避免一次性加载所有文档到内存，适合处理大量数据
 
 ## 浏览器支持
 

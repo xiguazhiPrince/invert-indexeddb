@@ -125,22 +125,19 @@
         </div>
 
         <div class="section">
-            <h2>轻量级搜索 (searchIds)</h2>
-            <p>只返回ID和指定字段，减少内存占用</p>
+            <h2>基础搜索 (search)</h2>
+            <p>使用新的游标搜索API，返回完整文档对象</p>
             <div class="form-group">
                 <label>搜索关键词:</label>
-                <input type="text" id="searchIdsQuery" placeholder="输入关键词" value="测试">
+                <input type="text" id="searchQuery" placeholder="输入关键词" value="测试">
             </div>
-            <div class="form-group">
-                <label>返回字段 (用逗号分隔):</label>
-                <input type="text" id="searchIdsFields" placeholder="例如: title,score,createdAt" value="title,score,createdAt">
-            </div>
-            <button onclick="searchIds()">执行轻量级搜索</button>
-            <div id="searchIdsResult"></div>
+            <button onclick="performSearch()">执行搜索</button>
+            <div id="searchResult"></div>
         </div>
 
         <div class="section">
             <h2>单字段排序</h2>
+            <p>支持按创建时间、更新时间或文档ID排序</p>
             <div class="form-group">
                 <label>搜索关键词:</label>
                 <input type="text" id="sortQuery" placeholder="输入关键词" value="测试">
@@ -148,9 +145,9 @@
             <div class="form-group">
                 <label>排序字段:</label>
                 <select id="sortField">
-                    <option value="score">score (分数)</option>
                     <option value="createdAt">createdAt (创建时间)</option>
-                    <option value="title">title (标题)</option>
+                    <option value="updatedAt">updatedAt (更新时间)</option>
+                    <option value="docId">docId (文档ID)</option>
                 </select>
             </div>
             <div class="form-group">
@@ -161,55 +158,47 @@
                 </select>
             </div>
             <div class="form-group">
-                <label>返回字段:</label>
-                <input type="text" id="sortFields" value="title,score,createdAt">
+                <label>限制数量:</label>
+                <input type="number" id="sortLimit" value="20" min="1">
             </div>
             <button onclick="sortSearch()">执行排序搜索</button>
             <div id="sortResult"></div>
         </div>
 
         <div class="section">
-            <h2>多字段排序</h2>
+            <h2>游标分页搜索</h2>
+            <p>使用游标（lastKey）实现分页，适合大数据量场景</p>
             <div class="form-group">
                 <label>搜索关键词:</label>
-                <input type="text" id="multiSortQuery" placeholder="输入关键词" value="测试">
+                <input type="text" id="cursorQuery" placeholder="输入关键词" value="测试">
             </div>
             <div class="form-group">
-                <label>第一排序字段:</label>
-                <select id="sortField1">
-                    <option value="score">score (分数)</option>
+                <label>排序字段:</label>
+                <select id="cursorSortField">
                     <option value="createdAt">createdAt (创建时间)</option>
-                    <option value="title">title (标题)</option>
+                    <option value="updatedAt">updatedAt (更新时间)</option>
+                    <option value="docId">docId (文档ID)</option>
                 </select>
             </div>
             <div class="form-group">
-                <label>第一排序方向:</label>
-                <select id="sortOrder1">
+                <label>排序方向:</label>
+                <select id="cursorSortOrder">
                     <option value="desc">降序</option>
                     <option value="asc">升序</option>
                 </select>
             </div>
             <div class="form-group">
-                <label>第二排序字段:</label>
-                <select id="sortField2">
-                    <option value="createdAt">createdAt (创建时间)</option>
-                    <option value="score">score (分数)</option>
-                    <option value="title">title (标题)</option>
-                </select>
+                <label>每页数量:</label>
+                <input type="number" id="cursorLimit" value="10" min="1">
             </div>
-            <div class="form-group">
-                <label>第二排序方向:</label>
-                <select id="sortOrder2">
-                    <option value="desc">降序</option>
-                    <option value="asc">升序</option>
-                </select>
-            </div>
-            <button onclick="multiSortSearch()">执行多字段排序搜索</button>
-            <div id="multiSortResult"></div>
+            <button onclick="cursorSearch()">搜索 (第1页)</button>
+            <button onclick="cursorNextPage()">下一页</button>
+            <div id="cursorResult"></div>
         </div>
 
         <div class="section">
-            <h2>分页搜索</h2>
+            <h2>传统分页搜索</h2>
+            <p>使用游标分页实现类似传统offset的分页效果</p>
             <div class="form-group">
                 <label>搜索关键词:</label>
                 <input type="text" id="pageQuery" placeholder="输入关键词" value="测试">
@@ -221,8 +210,9 @@
             <div class="form-group">
                 <label>排序字段:</label>
                 <select id="pageSortField">
-                    <option value="score">score (分数)</option>
                     <option value="createdAt">createdAt (创建时间)</option>
+                    <option value="updatedAt">updatedAt (更新时间)</option>
+                    <option value="docId">docId (文档ID)</option>
                 </select>
             </div>
             <div class="form-group">
@@ -246,8 +236,7 @@
     <script>
         let searchDB = null;
         let currentPage = 0;
-        let totalPages = 0;
-        let totalResults = 0;
+        let cursorNextKey = null; // 游标分页的nextKey
 
         const testDocuments = [];
         for (let i = 0; i < 50; i++) {
@@ -281,24 +270,22 @@
             }
         }
 
-        async function searchIds() {
+        async function performSearch() {
             if (!checkInit()) return;
             try {
-                const query = document.getElementById('searchIdsQuery').value;
-                const fields = document.getElementById('searchIdsFields').value
-                    .split(',')
-                    .map(f => f.trim())
-                    .filter(f => f);
+                const query = document.getElementById('searchQuery').value;
                 
-                const results = await searchDB.searchIds(query, { fields });
+                const results = await searchDB.search(query, {
+                    limit: 20
+                });
                 
-                showResult('searchIdsResult', 
-                    `找到 ${results.total} 个结果 (只返回ID和指定字段)`, 
+                showResult('searchResult', 
+                    `找到 ${results.items.length} 个结果`, 
                     'success',
                     results
                 );
             } catch (error) {
-                showResult('searchIdsResult', '搜索失败: ' + error.message, 'error');
+                showResult('searchResult', '搜索失败: ' + error.message, 'error');
             }
         }
 
@@ -306,20 +293,22 @@
             if (!checkInit()) return;
             try {
                 const query = document.getElementById('sortQuery').value;
-                const field = document.getElementById('sortField').value;
+                const sortBy = document.getElementById('sortField').value;
                 const order = document.getElementById('sortOrder').value;
-                const fields = document.getElementById('sortFields').value
-                    .split(',')
-                    .map(f => f.trim())
-                    .filter(f => f);
+                const limit = parseInt(document.getElementById('sortLimit').value);
+                if (isNaN(limit) || limit <= 0) {
+                    showResult('sortResult', '请输入有效的限制数量（大于0）', 'error');
+                    return;
+                }
                 
-                const results = await searchDB.searchIds(query, {
-                    fields,
-                    sortBy: { field, order }
+                const results = await searchDB.search(query, {
+                    sortBy: sortBy,
+                    order: order,
+                    limit: limit
                 });
                 
                 showResult('sortResult', 
-                    `找到 ${results.total} 个结果 (按 ${field} ${order} 排序)`, 
+                    `找到 ${results.items.length} 个结果 (按 ${sortBy} ${order} 排序)`, 
                     'success',
                     results
                 );
@@ -328,64 +317,180 @@
             }
         }
 
-        async function multiSortSearch() {
+        async function cursorSearch() {
             if (!checkInit()) return;
             try {
-                const query = document.getElementById('multiSortQuery').value;
-                const field1 = document.getElementById('sortField1').value;
-                const order1 = document.getElementById('sortOrder1').value;
-                const field2 = document.getElementById('sortField2').value;
-                const order2 = document.getElementById('sortOrder2').value;
+                const query = document.getElementById('cursorQuery').value;
+                const sortBy = document.getElementById('cursorSortField').value;
+                const order = document.getElementById('cursorSortOrder').value;
+                const limit = parseInt(document.getElementById('cursorLimit').value);
+                if (isNaN(limit) || limit <= 0) {
+                    showResult('cursorResult', '请输入有效的限制数量（大于0）', 'error');
+                    return;
+                }
                 
-                const results = await searchDB.searchIds(query, {
-                    fields: ['title', 'score', 'createdAt'],
-                    sortBy: [
-                        { field: field1, order: order1 },
-                        { field: field2, order: order2 }
-                    ]
+                const results = await searchDB.search(query, {
+                    sortBy: sortBy,
+                    order: order,
+                    limit: limit
                 });
                 
-                showResult('multiSortResult', 
-                    `找到 ${results.total} 个结果 (先按 ${field1} ${order1}，再按 ${field2} ${order2})`, 
+                cursorNextKey = results.nextKey;
+                
+                showResult('cursorResult', 
+                    `找到 ${results.items.length} 个结果 (按 ${sortBy} ${order} 排序)${results.nextKey ? '，还有更多结果' : ''}`, 
                     'success',
                     results
                 );
             } catch (error) {
-                showResult('multiSortResult', '搜索失败: ' + error.message, 'error');
+                showResult('cursorResult', '搜索失败: ' + error.message, 'error');
             }
         }
+
+        async function cursorNextPage() {
+            if (!checkInit() || cursorNextKey === null || cursorNextKey === undefined) {
+                alert('没有更多结果或请先执行搜索');
+                return;
+            }
+            try {
+                const query = document.getElementById('cursorQuery').value;
+                const sortBy = document.getElementById('cursorSortField').value;
+                const order = document.getElementById('cursorSortOrder').value;
+                const limit = parseInt(document.getElementById('cursorLimit').value);
+                if (isNaN(limit) || limit <= 0) {
+                    showResult('cursorResult', '请输入有效的限制数量（大于0）', 'error');
+                    return;
+                }
+                
+                const searchOptions = {
+                    sortBy: sortBy,
+                    order: order,
+                    limit: limit
+                };
+                if (cursorNextKey !== null && cursorNextKey !== undefined && typeof cursorNextKey === 'number') {
+                    searchOptions.lastKey = cursorNextKey;
+                }
+                
+                const results = await searchDB.search(query, searchOptions);
+                
+                cursorNextKey = results.nextKey;
+                
+                showResult('cursorResult', 
+                    `找到 ${results.items.length} 个结果 (按 ${sortBy} ${order} 排序)${results.nextKey ? '，还有更多结果' : '，已是最后一页'}`, 
+                    'success',
+                    results
+                );
+            } catch (error) {
+                showResult('cursorResult', '搜索失败: ' + error.message, 'error');
+            }
+        }
+
+        let pageSearchState = {
+            query: '',
+            sortBy: '',
+            order: '',
+            pageSize: 0,
+            pageKeys: [] // 存储每页的lastKey，用于实现类似offset的分页
+        };
 
         async function pageSearch(page) {
             if (!checkInit()) return;
             try {
                 const query = document.getElementById('pageQuery').value;
                 const pageSize = parseInt(document.getElementById('pageSize').value);
-                const sortField = document.getElementById('pageSortField').value;
-                const sortOrder = document.getElementById('pageSortOrder').value;
+                if (isNaN(pageSize) || pageSize <= 0) {
+                    showResult('pageResult', '请输入有效的每页数量（大于0）', 'error');
+                    return;
+                }
+                const sortBy = document.getElementById('pageSortField').value;
+                const order = document.getElementById('pageSortOrder').value;
                 
-                const results = await searchDB.searchIds(query, {
-                    fields: ['title', 'score', 'createdAt'],
-                    sortBy: { field: sortField, order: sortOrder },
-                    limit: pageSize,
-                    offset: page * pageSize
-                });
+                // 如果查询条件改变，重置分页状态
+                if (query !== pageSearchState.query || 
+                    sortBy !== pageSearchState.sortBy || 
+                    order !== pageSearchState.order ||
+                    pageSize !== pageSearchState.pageSize) {
+                    pageSearchState.query = query;
+                    pageSearchState.sortBy = sortBy;
+                    pageSearchState.order = order;
+                    pageSearchState.pageSize = pageSize;
+                    pageSearchState.pageKeys = [];
+                    page = 0; // 重置到第一页
+                }
                 
-                totalResults = results.total;
-                totalPages = Math.ceil(totalResults / pageSize);
+                // 使用游标实现类似offset的分页
+                let lastKey = undefined;
+                if (page > 0 && pageSearchState.pageKeys.length >= page) {
+                    const savedKey = pageSearchState.pageKeys[page - 1];
+                    // 只有当savedKey是有效数字时才使用
+                    if (savedKey !== null && savedKey !== undefined && typeof savedKey === 'number') {
+                        lastKey = savedKey;
+                    }
+                } else if (page > 0) {
+                    // 如果需要跳转到未访问过的页面，需要先获取前面的所有页
+                    let currentLastKey = undefined;
+                    if (pageSearchState.pageKeys.length > 0) {
+                        const lastSavedKey = pageSearchState.pageKeys[pageSearchState.pageKeys.length - 1];
+                        if (lastSavedKey !== null && lastSavedKey !== undefined && typeof lastSavedKey === 'number') {
+                            currentLastKey = lastSavedKey;
+                        }
+                    }
+                    
+                    for (let i = pageSearchState.pageKeys.length; i < page; i++) {
+                        const searchOptions = {
+                            sortBy: sortBy,
+                            order: order,
+                            limit: pageSize
+                        };
+                        if (currentLastKey !== undefined) {
+                            searchOptions.lastKey = currentLastKey;
+                        }
+                        
+                        const pageResults = await searchDB.search(query, searchOptions);
+                        currentLastKey = pageResults.nextKey;
+                        pageSearchState.pageKeys.push(currentLastKey);
+                        if (currentLastKey === undefined) break; // 没有更多数据了
+                    }
+                    const savedKey = pageSearchState.pageKeys[page - 1];
+                    if (savedKey !== null && savedKey !== undefined && typeof savedKey === 'number') {
+                        lastKey = savedKey;
+                    }
+                }
+                
+                const searchOptions = {
+                    sortBy: sortBy,
+                    order: order,
+                    limit: pageSize
+                };
+                if (lastKey !== undefined) {
+                    searchOptions.lastKey = lastKey;
+                }
+                
+                const results = await searchDB.search(query, searchOptions);
+                
+                // 保存当前页的nextKey
+                if (pageSearchState.pageKeys.length === page) {
+                    pageSearchState.pageKeys.push(results.nextKey);
+                } else if (pageSearchState.pageKeys.length > page) {
+                    pageSearchState.pageKeys[page] = results.nextKey;
+                }
+                
                 currentPage = page;
+                const hasMore = !!results.nextKey;
+                const hasPrev = page > 0;
                 
                 const paginationDiv = document.getElementById('pagination');
                 const pageInfo = document.getElementById('pageInfo');
                 
-                if (totalPages > 1) {
+                if (hasPrev || hasMore) {
                     paginationDiv.style.display = 'flex';
-                    pageInfo.textContent = `第 ${currentPage + 1} 页 / 共 ${totalPages} 页 (共 ${totalResults} 条)`;
+                    pageInfo.textContent = `第 ${currentPage + 1} 页${hasMore ? ' (还有更多)' : ' (最后一页)'}`;
                 } else {
                     paginationDiv.style.display = 'none';
                 }
                 
                 showResult('pageResult', 
-                    `找到 ${results.total} 个结果，显示第 ${currentPage + 1} 页 (${results.items.length} 条)`, 
+                    `找到 ${results.items.length} 个结果，显示第 ${currentPage + 1} 页`, 
                     'success',
                     results
                 );
@@ -401,7 +506,7 @@
         }
 
         function nextPage() {
-            if (currentPage < totalPages - 1) {
+            if (pageSearchState.pageKeys[currentPage]) {
                 pageSearch(currentPage + 1);
             }
         }

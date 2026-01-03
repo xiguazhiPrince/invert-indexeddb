@@ -5,6 +5,7 @@ import { DocFieldsStore } from '../database/stores/doc-fields-store';
 
 /**
  * 排序器
+ * @deprecated 已废弃
  */
 export class Sorter {
   private readonly db: IndexedDBWrapper;

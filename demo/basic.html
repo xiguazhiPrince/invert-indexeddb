@@ -244,9 +244,14 @@
         async function getDocument() {
             if (!checkInit()) return;
             try {
-                const docId = document.getElementById('getDocId').value;
-                if (!docId) {
+                const docIdStr = document.getElementById('getDocId').value;
+                if (!docIdStr) {
                     showResult('getResult', '请输入文档ID', 'error');
+                    return;
+                }
+                const docId = parseInt(docIdStr, 10);
+                if (isNaN(docId)) {
+                    showResult('getResult', '文档ID必须是数字', 'error');
                     return;
                 }
                 const doc = await searchDB.getDocument(docId);
@@ -263,12 +268,18 @@
         async function updateDocument() {
             if (!checkInit()) return;
             try {
-                const docId = document.getElementById('updateDocId').value;
+                const docIdStr = document.getElementById('updateDocId').value;
                 const title = document.getElementById('updateTitle').value;
                 const content = document.getElementById('updateContent').value;
 
-                if (!docId) {
+                if (!docIdStr) {
                     showResult('updateResult', '请输入文档ID', 'error');
+                    return;
+                }
+
+                const docId = parseInt(docIdStr, 10);
+                if (isNaN(docId)) {
+                    showResult('updateResult', '文档ID必须是数字', 'error');
                     return;
                 }
 
@@ -293,7 +304,7 @@
                 }
                 const results = await searchDB.search(query);
                 showResult('searchResult', 
-                    `找到 ${results.total} 个结果`, 
+                    `找到 ${results.items.length} 个结果`, 
                     'success', 
                     results
                 );
@@ -305,9 +316,14 @@
         async function deleteDocument() {
             if (!checkInit()) return;
             try {
-                const docId = document.getElementById('deleteDocId').value;
-                if (!docId) {
+                const docIdStr = document.getElementById('deleteDocId').value;
+                if (!docIdStr) {
                     showResult('deleteResult', '请输入文档ID', 'error');
+                    return;
+                }
+                const docId = parseInt(docIdStr, 10);
+                if (isNaN(docId)) {
+                    showResult('deleteResult', '文档ID必须是数字', 'error');
                     return;
                 }
                 await searchDB.deleteDocument(docId);
