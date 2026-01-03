@@ -228,6 +228,147 @@ export class DocumentsStore {
   }
 
   /**
+   * 通过索引字段获取文档（精确匹配）
+   * @param indexName 索引名称（如 'createdAt', 'updatedAt' 或自定义索引名）
+   * @param value 索引字段的值
+   * @returns 匹配的文档，如果索引是唯一的则返回单个文档，否则返回第一个匹配的文档
+   */
+  async getByIndexField<T extends BaseDocument = BaseDocument>(
+    indexName: string,
+    value: IDBValidKey
+  ): Promise<T | null> {
+    return new Promise((resolve, reject) => {
+      const db = this.db.getDB();
+      const transaction = db.transaction([STORE_NAMES.DOCUMENTS], 'readonly');
+      const store = transaction.objectStore(STORE_NAMES.DOCUMENTS);
+
+      // 检查索引是否存在
+      if (!store.indexNames.contains(indexName)) {
+        reject(
+          new Error(
+            `Index "${indexName}" does not exist. Available indexes: ${Array.from(store.indexNames).join(', ')}`
+          )
+        );
+        return;
+      }
+
+      const index = store.index(indexName);
+      const request = index.get(value);
+
+      request.onsuccess = () => {
+        resolve((request.result as T) || null);
+      };
+
+      request.onerror = () => {
+        const error = request.error || new Error('Unknown error');
+        reject(new Error(`Failed to get document by index "${indexName}": ${error.message}`));
+      };
+    });
+  }
+
+  /**
+   * 通过索引字段获取所有匹配的文档
+   * @param indexName 索引名称（如 'createdAt', 'updatedAt' 或自定义索引名）
+   * @param value 索引字段的值
+   * @returns 所有匹配的文档数组
+   */
+  async getAllByIndexField<T extends BaseDocument = BaseDocument>(
+    indexName: string,
+    value: IDBValidKey
+  ): Promise<T[]> {
+    return new Promise((resolve, reject) => {
+      const db = this.db.getDB();
+      const transaction = db.transaction([STORE_NAMES.DOCUMENTS], 'readonly');
+      const store = transaction.objectStore(STORE_NAMES.DOCUMENTS);
+
+      // 检查索引是否存在
+      if (!store.indexNames.contains(indexName)) {
+        reject(
+          new Error(
+            `Index "${indexName}" does not exist. Available indexes: ${Array.from(store.indexNames).join(', ')}`
+          )
+        );
+        return;
+      }
+
+      const index = store.index(indexName);
+      const request = index.getAll(value);
+
+      request.onsuccess = () => {
+        resolve((request.result as T[]) || []);
+      };
+
+      request.onerror = () => {
+        const error = request.error || new Error('Unknown error');
+        reject(new Error(`Failed to get documents by index "${indexName}": ${error.message}`));
+      };
+    });
+  }
+
+  /**
+   * 通过索引字段范围查询文档
+   * @param indexName 索引名称（如 'createdAt', 'updatedAt' 或自定义索引名）
+   * @param range 查询范围，可以是 IDBKeyRange 对象或范围配置对象
+   * @param limit 限制返回数量（可选）
+   * @returns 匹配的文档数组
+   */
+  async getRangeByIndexField<T extends BaseDocument = BaseDocument>(
+    indexName: string,
+    range?:
+      | IDBKeyRange
+      | { lower?: IDBValidKey; upper?: IDBValidKey; lowerOpen?: boolean; upperOpen?: boolean },
+    limit?: number
+  ): Promise<T[]> {
+    return new Promise((resolve, reject) => {
+      const db = this.db.getDB();
+      const transaction = db.transaction([STORE_NAMES.DOCUMENTS], 'readonly');
+      const store = transaction.objectStore(STORE_NAMES.DOCUMENTS);
+
+      // 检查索引是否存在
+      if (!store.indexNames.contains(indexName)) {
+        reject(
+          new Error(
+            `Index "${indexName}" does not exist. Available indexes: ${Array.from(store.indexNames).join(', ')}`
+          )
+        );
+        return;
+      }
+
+      const index = store.index(indexName);
+
+      // 构建 IDBKeyRange
+      let keyRange: IDBKeyRange | undefined;
+      if (range) {
+        if (range instanceof IDBKeyRange) {
+          keyRange = range;
+        } else {
+          const { lower, upper, lowerOpen = false, upperOpen = false } = range;
+          if (lower !== undefined && upper !== undefined) {
+            keyRange = IDBKeyRange.bound(lower, upper, lowerOpen, upperOpen);
+          } else if (lower !== undefined) {
+            keyRange = IDBKeyRange.lowerBound(lower, lowerOpen);
+          } else if (upper !== undefined) {
+            keyRange = IDBKeyRange.upperBound(upper, upperOpen);
+          }
+        }
+      }
+
+      const request = keyRange ? index.getAll(keyRange, limit) : index.getAll(undefined, limit);
+
+      request.onsuccess = () => {
+        resolve((request.result as T[]) || []);
+      };
+
+      request.onerror = () => {
+        const error = request.error || new Error('Unknown error');
+        reject(
+          new Error(`Failed to get documents by index range "${indexName}": ${error.message}`)
+        );
+      };
+    });
+  }
+
+  /**
    * 清空 store
    */
   async clear(): Promise<void> {

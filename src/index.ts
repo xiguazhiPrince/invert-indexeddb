@@ -153,6 +153,67 @@ export class InvertedIndexDB {
   }
 
   /**
+   * 通过索引字段获取文档（精确匹配）
+   * @param indexName 索引名称（如 'createdAt', 'updatedAt' 或自定义索引名）
+   * @param value 索引字段的值
+   * @returns 匹配的文档，如果索引是唯一的则返回单个文档，否则返回第一个匹配的文档
+   */
+  async getDocumentByIndexField<T extends BaseDocument = BaseDocument>(
+    indexName: string,
+    value: IDBValidKey
+  ): Promise<T | null> {
+    this.ensureInitialized();
+
+    if (!this.documentsStore) {
+      throw new Error('DocumentsStore not initialized');
+    }
+
+    return await this.documentsStore.getByIndexField<T>(indexName, value);
+  }
+
+  /**
+   * 通过索引字段获取所有匹配的文档
+   * @param indexName 索引名称（如 'createdAt', 'updatedAt' 或自定义索引名）
+   * @param value 索引字段的值
+   * @returns 所有匹配的文档数组
+   */
+  async getAllDocumentsByIndexField<T extends BaseDocument = BaseDocument>(
+    indexName: string,
+    value: IDBValidKey
+  ): Promise<T[]> {
+    this.ensureInitialized();
+
+    if (!this.documentsStore) {
+      throw new Error('DocumentsStore not initialized');
+    }
+
+    return await this.documentsStore.getAllByIndexField<T>(indexName, value);
+  }
+
+  /**
+   * 通过索引字段范围查询文档
+   * @param indexName 索引名称（如 'createdAt', 'updatedAt' 或自定义索引名）
+   * @param range 查询范围，可以是 IDBKeyRange 对象或范围配置对象
+   * @param limit 限制返回数量（可选）
+   * @returns 匹配的文档数组
+   */
+  async getDocumentsByIndexRange<T extends BaseDocument = BaseDocument>(
+    indexName: string,
+    range?:
+      | IDBKeyRange
+      | { lower?: IDBValidKey; upper?: IDBValidKey; lowerOpen?: boolean; upperOpen?: boolean },
+    limit?: number
+  ): Promise<T[]> {
+    this.ensureInitialized();
+
+    if (!this.documentsStore) {
+      throw new Error('DocumentsStore not initialized');
+    }
+
+    return await this.documentsStore.getRangeByIndexField<T>(indexName, range, limit);
+  }
+
+  /**
    * 批量添加文档
    */
   async batchAddDocuments<T extends BaseDocument = BaseDocument>(
