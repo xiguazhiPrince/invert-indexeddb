@@ -1,6 +1,6 @@
 {
   "name": "invert-indexeddb",
-  "version": "1.0.0-5",
+  "version": "1.0.0-6",
   "description": "A full-text search SDK based on inverted index algorithm using IndexedDB",
   "main": "dist/index.js",
   "module": "dist/invert-indexeddb.esm.js",
