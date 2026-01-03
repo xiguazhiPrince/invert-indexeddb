@@ -37,6 +37,18 @@ export interface Token {
 }
 
 /**
+ * 自定义索引配置
+ */
+export interface CustomIndexConfig {
+  /** 索引字段名（支持嵌套字段，如 'user.name'） */
+  field: string;
+  /** 索引名称（如果不指定，默认使用字段名） */
+  name?: string;
+  /** 是否唯一索引 */
+  unique?: boolean;
+}
+
+/**
  * 初始化选项
  */
 export interface InitOptions {
@@ -44,6 +56,8 @@ export interface InitOptions {
   tokenizer?: ITokenizer;
   /** 数据库版本 */
   version?: number;
+  /** 自定义索引配置（在 documents store 上创建额外索引） */
+  customIndexes?: CustomIndexConfig[];
 }
 
 /**

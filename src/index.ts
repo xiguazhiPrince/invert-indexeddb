@@ -37,7 +37,7 @@ export class InvertedIndexDB {
   private initialized: boolean = false;
 
   constructor(dbName: string, options: InitOptions = {}) {
-    this.db = new IndexedDBWrapper(dbName, options.version);
+    this.db = new IndexedDBWrapper(dbName, options.version, options.customIndexes);
     this.tokenizer = options.tokenizer || new DefaultTokenizer();
   }
 
@@ -398,6 +398,7 @@ export type {
   ITokenizer,
   Token,
   InitOptions,
+  CustomIndexConfig,
   SearchOptions,
   SearchResult,
   SearchIdsOptions,

@@ -1,4 +1,5 @@
 import { STORE_NAMES, INDEX_NAMES, DB_NAME_PREFIX, DB_VERSION } from './schema';
+import type { CustomIndexConfig } from '../types';
 
 /**
  * IndexedDB 数据库封装类
@@ -7,10 +8,16 @@ export class IndexedDBWrapper {
   private db: IDBDatabase | null = null;
   private readonly dbName: string;
   private readonly version: number;
+  private readonly customIndexes: CustomIndexConfig[];
 
-  constructor(dbName: string, version: number = DB_VERSION) {
+  constructor(
+    dbName: string,
+    version: number = DB_VERSION,
+    customIndexes: CustomIndexConfig[] = []
+  ) {
     this.dbName = `${DB_NAME_PREFIX}${dbName}`;
     this.version = version;
+    this.customIndexes = customIndexes;
   }
 
   /**
@@ -36,15 +43,43 @@ export class IndexedDBWrapper {
 
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
+        const transaction = (event.target as IDBOpenDBRequest).transaction;
 
         // 创建 documents store
+        let docStore: IDBObjectStore;
         if (!db.objectStoreNames.contains(STORE_NAMES.DOCUMENTS)) {
-          const docStore = db.createObjectStore(STORE_NAMES.DOCUMENTS, {
+          docStore = db.createObjectStore(STORE_NAMES.DOCUMENTS, {
             keyPath: 'docId',
             autoIncrement: false,
           });
           docStore.createIndex(INDEX_NAMES.CREATED_AT, 'createdAt', { unique: false });
           docStore.createIndex(INDEX_NAMES.UPDATED_AT, 'updatedAt', { unique: false });
+        } else {
+          // Store 已存在，获取现有 store 以创建新索引
+          if (!transaction) {
+            throw new Error('Transaction is not available');
+          }
+          docStore = transaction.objectStore(STORE_NAMES.DOCUMENTS);
+        }
+
+        // 创建自定义索引
+        if (this.customIndexes && this.customIndexes.length > 0) {
+          for (const indexConfig of this.customIndexes) {
+            const indexName = indexConfig.name || indexConfig.field;
+            // 检查索引是否已存在
+            if (!docStore.indexNames.contains(indexName)) {
+              try {
+                docStore.createIndex(indexName, indexConfig.field, {
+                  unique: indexConfig.unique || false,
+                });
+              } catch (error) {
+                console.error(
+                  `Failed to create index ${indexName} on field ${indexConfig.field}:`,
+                  error
+                );
+              }
+            }
+          }
         }
 
         // 创建 invertedIndex store
