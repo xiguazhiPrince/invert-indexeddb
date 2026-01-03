@@ -49,5 +49,9 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/xiguazhiPrince/invert-indexeddb.git"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
   }
 }
