@@ -73,12 +73,12 @@ export class InvertedIndexDB {
    */
   async addDocument<T extends BaseDocument = BaseDocument>(
     doc: Omit<T, 'docId' | 'createdAt' | 'updatedAt' | 'terms'> &
-      Partial<Pick<BaseDocument, 'createdAt' | 'updatedAt'>>,
+      Partial<Pick<BaseDocument, 'docId' | 'createdAt' | 'updatedAt'>>,
     indexFields?: string[]
   ): Promise<number> {
     this.ensureInitialized();
 
-    const docId = generateId();
+    const docId = doc.docId ?? generateId();
     const docWithId: T = {
       ...doc,
       docId,
